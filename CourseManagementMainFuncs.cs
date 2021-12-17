@@ -29,6 +29,13 @@ cts.Cancel();
 // Алгоритм действий после получения сообщения.
 async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
 {
+    // Проверка на CallBack, если пользователь отправил не сообщение.
+    if (update.Type == UpdateType.CallbackQuery)
+    {
+        CheckUser.AnswerCallback(db.ChattedUsers.First(obj => obj.Id == update.CallbackQuery!.From.Id.ToString()), update, botClient, cts);
+        return;
+    }
+    // Строки для отображения информации о пользователе и времени в логах.
     string logDateMsg = $"[{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] ",
         logUserMsg = $"@{update.Message!.From!.Username}",
         logBotAnswer = "";
@@ -54,11 +61,11 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         {
             if (!db.ChattedUsers.Any(obj => obj.Id == update.Message.From!.Id.ToString())) // Проверка на отрицательный результат нахождения пользователя в БД.
             {
-                Console.WriteLine(" ~ Ошибка БД: пользователь не найден.");
+                Console.WriteLine(" ~ Пользователь не найден в БД. Он впервые пишет боту.");
                 // Проверка на /start в сообщении.
                 if (update.Message.Text == "/start")
                 {
-                    Console.WriteLine(" ~ Добавляем пользователя в БД.");
+                    Console.WriteLine(" ~ Пользователь запустил бота командой. Добавляем его в БД.");
                     // Процесс добавления нового пользователя в таблицу БД ChattedUsers и сохранение БД.
                     CourseManagementBot.ChattedUser chattedUser = new CourseManagementBot.ChattedUser
                     {
@@ -69,12 +76,13 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                     };
                     db.Add(chattedUser);
                     db.SaveChanges();
-                    CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == chattedUser.Id), update);
+                    Console.WriteLine(" ~ Пользователь был добавлен в БД.");
+                    CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == chattedUser.Id), update, botClient, cts, true);
                 }
                 // Порядок действий, если пользователя нет в БД и он не написал /start.
                 else
                 {
-                    logBotAnswer = "Для того, чтобы начать взаимодействовать с ботом, напишите \"/start\".";
+                    logBotAnswer = "Для того, чтобы начать взаимодействовать с ботом, напишите /start";
                     Console.WriteLine($" ~ {logDateMsg}Ответ пользователю {logUserMsg}: {logBotAnswer}");
                     Message sentMessage = await botClient.SendTextMessageAsync(
                         chatId: update.Message.Chat.Id,
@@ -83,7 +91,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                 }
             }
             else
-                CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == update.Message.From.Id.ToString()), update);
+                CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == update.Message.From.Id.ToString()), update, botClient, cts, false);
         }
         // Ошибка БД.
         catch (Exception ex)
