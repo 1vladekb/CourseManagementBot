@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CourseManagementBot
+namespace CourseManagementBot.Models
 {
     public partial class Course
     {
         public Course()
         {
             CourseAssignments = new HashSet<CourseAssignment>();
+            CourseChanges = new HashSet<CourseChange>();
             CourseJoinHistories = new HashSet<CourseJoinHistory>();
             CourseUsers = new HashSet<CourseUser>();
             Courses = new HashSet<Course>();
@@ -32,6 +33,7 @@ namespace CourseManagementBot
         public virtual ChattedUser CuratorNavigation { get; set; } = null!;
         public virtual ActiveToken? TokenNavigation { get; set; }
         public virtual ICollection<CourseAssignment> CourseAssignments { get; set; }
+        public virtual ICollection<CourseChange> CourseChanges { get; set; }
         public virtual ICollection<CourseJoinHistory> CourseJoinHistories { get; set; }
         public virtual ICollection<CourseUser> CourseUsers { get; set; }
 

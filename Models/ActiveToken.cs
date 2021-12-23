@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CourseManagementBot
+namespace CourseManagementBot.Models
 {
     public partial class ActiveToken
     {

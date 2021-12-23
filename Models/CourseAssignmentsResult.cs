@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CourseManagementBot
+namespace CourseManagementBot.Models
 {
     public partial class CourseAssignmentsResult
     {
@@ -10,6 +10,7 @@ namespace CourseManagementBot
         public DateTime CompletionDate { get; set; }
         public int? Grade { get; set; }
         public int Attempt { get; set; }
+        public string? AssignmentValue { get; set; }
 
         public virtual CourseAssignment AssignmentNavigation { get; set; } = null!;
         public virtual ChattedUser CurrentUserNavigation { get; set; } = null!;

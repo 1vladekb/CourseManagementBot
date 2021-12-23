@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace CourseManagementBot
+namespace CourseManagementBot.Models
 {
     public partial class CourseManagementDataContext : DbContext
     {
@@ -20,11 +20,16 @@ namespace CourseManagementBot
         public virtual DbSet<ChattedUser> ChattedUsers { get; set; } = null!;
         public virtual DbSet<Course> Courses { get; set; } = null!;
         public virtual DbSet<CourseAssignment> CourseAssignments { get; set; } = null!;
+        public virtual DbSet<CourseAssignmentChange> CourseAssignmentChanges { get; set; } = null!;
         public virtual DbSet<CourseAssignmentsResult> CourseAssignmentsResults { get; set; } = null!;
+        public virtual DbSet<CourseChange> CourseChanges { get; set; } = null!;
         public virtual DbSet<CourseJoinHistory> CourseJoinHistories { get; set; } = null!;
         public virtual DbSet<CourseUser> CourseUsers { get; set; } = null!;
         public virtual DbSet<CourseUserRole> CourseUserRoles { get; set; } = null!;
+        public virtual DbSet<GradeType> GradeTypes { get; set; } = null!;
         public virtual DbSet<LogType> LogTypes { get; set; } = null!;
+        public virtual DbSet<Notification> Notifications { get; set; } = null!;
+        public virtual DbSet<NotificationType> NotificationTypes { get; set; } = null!;
         public virtual DbSet<TokenType> TokenTypes { get; set; } = null!;
         public virtual DbSet<UserRole> UserRoles { get; set; } = null!;
 
@@ -34,7 +39,6 @@ namespace CourseManagementBot
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
                 optionsBuilder.UseSqlServer("Server=vladico.cf;Database=CourseManagementData;User id=vladekb1;Password=FgVbNxQwZ5428;");
-                //optionsBuilder.UseSqlServer("Server=192.168.0.4;Database=CourseManagementData;User id=vladekb1;Password=FgVbNxQwZ5428;");
             }
         }
 
@@ -65,7 +69,17 @@ namespace CourseManagementBot
                     .HasMaxLength(30)
                     .HasColumnName("ChatID");
 
+                entity.Property(e => e.Email).HasMaxLength(80);
+
+                entity.Property(e => e.FirstName).HasMaxLength(50);
+
+                entity.Property(e => e.LastName).HasMaxLength(50);
+
+                entity.Property(e => e.MiddleName).HasMaxLength(50);
+
                 entity.Property(e => e.Name).HasMaxLength(100);
+
+                entity.Property(e => e.Photo).HasColumnType("image");
 
                 entity.Property(e => e.Role).HasMaxLength(30);
 
@@ -143,13 +157,51 @@ namespace CourseManagementBot
 
                 entity.Property(e => e.EndDate).HasColumnType("date");
 
+                entity.Property(e => e.GradeType).HasMaxLength(20);
+
                 entity.Property(e => e.Name).HasMaxLength(150);
+
+                entity.Property(e => e.NeedToCompleteHw).HasColumnName("NeedToCompleteHW");
+
+                entity.HasOne(d => d.GradeTypeNavigation)
+                    .WithMany(p => p.CourseAssignments)
+                    .HasForeignKey(d => d.GradeType)
+                    .HasConstraintName("FK_CourseAssignments_GradeTypes");
 
                 entity.HasOne(d => d.PinnedCourseNavigation)
                     .WithMany(p => p.CourseAssignments)
                     .HasForeignKey(d => d.PinnedCourse)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_CourseAssignments_Courses");
+            });
+
+            modelBuilder.Entity<CourseAssignmentChange>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.ChangedCheckedBy).HasMaxLength(30);
+
+                entity.Property(e => e.ChangedEndDate).HasColumnType("date");
+
+                entity.Property(e => e.ChangedGradeType).HasMaxLength(20);
+
+                entity.Property(e => e.ChangedName).HasMaxLength(150);
+
+                entity.Property(e => e.ChangesCheckDate).HasColumnType("date");
+
+                entity.Property(e => e.NeedToCompleteHw).HasColumnName("NeedToCompleteHW");
+
+                entity.Property(e => e.SendChangesDate).HasColumnType("date");
+
+                entity.HasOne(d => d.ChangedCheckedByNavigation)
+                    .WithMany(p => p.CourseAssignmentChanges)
+                    .HasForeignKey(d => d.ChangedCheckedBy)
+                    .HasConstraintName("FK_CourseAssignmentChanges_ChattedUsers");
+
+                entity.HasOne(d => d.CourseAssignmentNavigation)
+                    .WithMany(p => p.CourseAssignmentChanges)
+                    .HasForeignKey(d => d.CourseAssignment)
+                    .HasConstraintName("FK_CourseAssignmentChanges_CourseAssignments");
             });
 
             modelBuilder.Entity<CourseAssignmentsResult>(entity =>
@@ -171,6 +223,31 @@ namespace CourseManagementBot
                     .HasForeignKey(d => d.CurrentUser)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_CourseAssignmentsResults_ChattedUsers");
+            });
+
+            modelBuilder.Entity<CourseChange>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.ChangedEndDate).HasColumnType("date");
+
+                entity.Property(e => e.ChangedName).HasMaxLength(200);
+
+                entity.Property(e => e.ChangesCheckDate).HasColumnType("date");
+
+                entity.Property(e => e.ChangesCheckedBy).HasMaxLength(30);
+
+                entity.Property(e => e.SendChangesDate).HasColumnType("date");
+
+                entity.HasOne(d => d.ChangesCheckedByNavigation)
+                    .WithMany(p => p.CourseChanges)
+                    .HasForeignKey(d => d.ChangesCheckedBy)
+                    .HasConstraintName("FK_CourseChanges_ChattedUsers1");
+
+                entity.HasOne(d => d.CourseNavigation)
+                    .WithMany(p => p.CourseChanges)
+                    .HasForeignKey(d => d.Course)
+                    .HasConstraintName("FK_CourseChanges_Courses");
             });
 
             modelBuilder.Entity<CourseJoinHistory>(entity =>
@@ -241,11 +318,48 @@ namespace CourseManagementBot
                 entity.Property(e => e.RoleName).HasMaxLength(50);
             });
 
+            modelBuilder.Entity<GradeType>(entity =>
+            {
+                entity.HasKey(e => e.GradeTypeName);
+
+                entity.Property(e => e.GradeTypeName).HasMaxLength(20);
+            });
+
             modelBuilder.Entity<LogType>(entity =>
             {
                 entity.HasKey(e => e.LogTypeName);
 
                 entity.Property(e => e.LogTypeName).HasMaxLength(100);
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.Date).HasColumnType("date");
+
+                entity.Property(e => e.FromUser).HasMaxLength(30);
+
+                entity.Property(e => e.Type).HasMaxLength(100);
+
+                entity.HasOne(d => d.FromUserNavigation)
+                    .WithMany(p => p.Notifications)
+                    .HasForeignKey(d => d.FromUser)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_Notifications_ChattedUsers");
+
+                entity.HasOne(d => d.TypeNavigation)
+                    .WithMany(p => p.Notifications)
+                    .HasForeignKey(d => d.Type)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_Notifications_NotificationTypes");
+            });
+
+            modelBuilder.Entity<NotificationType>(entity =>
+            {
+                entity.HasKey(e => e.NotificationTypeName);
+
+                entity.Property(e => e.NotificationTypeName).HasMaxLength(100);
             });
 
             modelBuilder.Entity<TokenType>(entity =>

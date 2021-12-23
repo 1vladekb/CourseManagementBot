@@ -7,7 +7,8 @@ using Telegram.Bot.Types.Enums;
 TelegramBotClient botClient = new TelegramBotClient("2056051853:AAHKZxIFf7CYf31AgOuJX4r4yiUXj4w6jQ4"); // Токен бота
 using CancellationTokenSource cts = new CancellationTokenSource();
 CourseManagementBot.CheckCurrentUser CheckUser = new CourseManagementBot.CheckCurrentUser(); // Экземпляр объекта проверки пользователя
-CourseManagementBot.CourseManagementDataContext db = new CourseManagementBot.CourseManagementDataContext(); // Экземпляр объекта БД
+CourseManagementBot.Models.CourseManagementDataContext db = new CourseManagementBot.Models.CourseManagementDataContext(); // Экземпляр объекта БД
+List<string> ProccessCallBackUsers = new List<string>();
 
 var receiverOptions = new ReceiverOptions
 {
@@ -29,37 +30,41 @@ cts.Cancel();
 // Алгоритм действий после получения сообщения.
 async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
 {
-    // Проверка на CallBack, если пользователь отправил не сообщение.
-    if (update.Type == UpdateType.CallbackQuery)
-    {
-        CheckUser.AnswerCallback(db.ChattedUsers.First(obj => obj.Id == update.CallbackQuery!.From.Id.ToString()), update, botClient, cts);
-        return;
-    }
     // Строки для отображения информации о пользователе и времени в логах.
     string logDateMsg = $"[{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] ",
-        logUserMsg = $"@{update.Message!.From!.Username}",
         logBotAnswer = "";
-    // Определение типа сообщения (текст, файл, фото и т. д.) и его пропуск, если тип сообщения не подходит.
-    switch (update.Message.Type)
+    // Определение типа апдейта (callback, сообщение и т. д.).
+    switch (update.Type)
     {
-        case MessageType.Text: // Алгоритм действий в случае, если в сообщении пользователя только текст.
-            Console.WriteLine($"{logDateMsg}Пользователь {logUserMsg} отправил текстовое сообщение: {update.Message.Text}."); // Логирование в консоль содержимого сообщения пользователя.
+        case UpdateType.CallbackQuery: // Проверка на CallBack, если пользователь нажал на inline кнопку во вложенном сообщении.
+            Console.WriteLine($"{logDateMsg}Пользователь {update.CallbackQuery!.From.Id} нажал на inline кнопку, содержащую в себе событие {update.CallbackQuery!.Data}."); // Логирование в консоль запуска события пользователем.
+            CheckUser.AnswerCallback(db.ChattedUsers.First(obj => obj.Id == update.CallbackQuery!.From.Id.ToString()), update, botClient, cts, ProccessCallBackUsers); // Вызов обработки события callback запроса от пользователя.
             break;
-        case MessageType.Photo: // Алгоритм действий в случае, если в сообщении пользователя фото.
-            Console.WriteLine($"{logDateMsg}Пользователь {logUserMsg} отправил фотографию."); // Логирование в консоль содержимого сообщения пользователя.
+        case UpdateType.Message: // Проверка на сообщение, отправленного боту.
+            // Определение типа сообщения (текст, файл, фото и т. д.) и его пропуск, если тип сообщения не подходит.
+            switch (update.Message!.Type)
+            {
+                case MessageType.Text: // Алгоритм действий в случае, если в сообщении пользователя только текст.
+                    Console.WriteLine($"{logDateMsg}Пользователь {update.Message!.From!.Username} отправил текстовое сообщение: {update.Message.Text}."); // Логирование в консоль содержимого сообщения пользователя.
+                    break;
+                case MessageType.Photo: // Алгоритм действий в случае, если в сообщении пользователя фото.
+                    Console.WriteLine($"{logDateMsg}Пользователь {update.Message!.From!.Username} отправил фотографию."); // Логирование в консоль содержимого сообщения пользователя.
+                    break;
+                // Пропускает сообщение мимо в случае, если тип полученного сообщения пользователя не соответствует допустимым типам.
+                default:
+                    return;
+            }
             break;
-        default: // Пропускать сообщение мимо в случае, если тип сообщения пользователя не соответствует кейсам.
+        // Пропускает сообщение, если оно имеет неверный тип апдейта.
+        default:
             return;
     }
-    // Обрабатывать только сообщения.
-    if (update.Type != UpdateType.Message)
-        return;
-    // Проверка наличия информации о сообщении
+    // Проверка наличия содержимого сообщения.
     if (update.Message != null)
     {
         try
         {
-            if (!db.ChattedUsers.Any(obj => obj.Id == update.Message.From!.Id.ToString())) // Проверка на отрицательный результат нахождения пользователя в БД.
+            if (!db.ChattedUsers.Any(obj => obj.Id == update.Message.From!.Id.ToString())) // Проверка на отрицательный результат нахождения пользователя в БД (новенький пользователь или нет).
             {
                 Console.WriteLine(" ~ Пользователь не найден в БД. Он впервые пишет боту.");
                 // Проверка на /start в сообщении.
@@ -67,23 +72,24 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                 {
                     Console.WriteLine(" ~ Пользователь запустил бота командой. Добавляем его в БД.");
                     // Процесс добавления нового пользователя в таблицу БД ChattedUsers и сохранение БД.
-                    CourseManagementBot.ChattedUser chattedUser = new CourseManagementBot.ChattedUser
+                    CourseManagementBot.Models.ChattedUser chattedUser = new CourseManagementBot.Models.ChattedUser()
                     {
                         Id = update.Message.From!.Id.ToString(),
                         ChatId = update.Message.Chat.Id.ToString(),
                         Name = update.Message.From.Username ?? update.Message.From.FirstName, // Если имя пользователя отсутствует, будет присваиваться обычное имя.
                         Role = "Пользователь"
                     };
-                    db.Add(chattedUser);
-                    db.SaveChanges();
+                    db.Add(chattedUser); // Добавление новой записи в БД
+                    db.SaveChanges(); // Сохранение БД
                     Console.WriteLine(" ~ Пользователь был добавлен в БД.");
-                    CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == chattedUser.Id), update, botClient, cts, true);
+                    CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == chattedUser.Id), update, botClient, cts, true, ProccessCallBackUsers); // Отправка приветствия новому пользователю.
                 }
                 // Порядок действий, если пользователя нет в БД и он не написал /start.
                 else
                 {
+                    // Логирование в консоли и отправка сообщения пользователю о том, что нужно прописать /start для дальнейшего взаимодействия с ботом.
                     logBotAnswer = "Для того, чтобы начать взаимодействовать с ботом, напишите /start";
-                    Console.WriteLine($" ~ {logDateMsg}Ответ пользователю {logUserMsg}: {logBotAnswer}");
+                    Console.WriteLine($" ~ {logDateMsg}Ответ пользователю {update.Message!.From!.Username}: {logBotAnswer}");
                     Message sentMessage = await botClient.SendTextMessageAsync(
                         chatId: update.Message.Chat.Id,
                         text: logBotAnswer,
@@ -91,12 +97,12 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                 }
             }
             else
-                CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == update.Message.From.Id.ToString()), update, botClient, cts, false);
+                CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == update.Message.From!.Id.ToString()), update, botClient, cts, false, ProccessCallBackUsers); // Вызов проверки текущего сообщения для дальнейшего ответа от бота.
         }
         // Ошибка БД.
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка БД: {ex.Message}\n\n");
+            Console.WriteLine($" ~ Ошибка БД: {ex.Message}\n\n"); // Логирование в консоль деталей ошибки БД. Скорее всего проблема связана с подключением к БД.
         }
     }
 }
