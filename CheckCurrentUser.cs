@@ -9,13 +9,15 @@ using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using CourseManagementBot.Models;
 
 namespace CourseManagementBot
 {
     internal class CheckCurrentUser
     {
         private string logBotAnswer = "";
-        public async void Check(Models.ChattedUser CurrentChattedUser, Update UpdMsg, ITelegramBotClient bot, CancellationTokenSource cts, bool IsStartedChatting, List<string> ProccessCallBackUsers)
+        private CourseManagementDataContext db = new CourseManagementDataContext();
+        public async void Check(Models.ChattedUser CurrentChattedUser, Update UpdMsg, ITelegramBotClient bot, CancellationTokenSource cts, bool IsStartedChatting, List<ProccessCallBackUsers> proccessCallBackUsers)
         {
             // Проверка пользователя на новизну.
             if (!IsStartedChatting)
@@ -24,23 +26,14 @@ namespace CourseManagementBot
                 switch (UpdMsg.Message!.Type)
                 {
                     case MessageType.Text:
-                        string currentUserProccess = "";
-                        foreach (string proccessCallBackUser in ProccessCallBackUsers)
-                        {
-                            string[] currentUserProccessInfo = proccessCallBackUser.Split(' ');
-                            if (UpdMsg.Message.From!.Id.ToString() == currentUserProccessInfo[0])
-                            {
-                                currentUserProccess = proccessCallBackUser;
-                                break;
-                            }
-                        }
-                        if (currentUserProccess == "")
+                        var currentUserProccess = proccessCallBackUsers.FirstOrDefault(obj=>obj.UserID==UpdMsg.Message.From!.Id.ToString());
+                        if (currentUserProccess == null)
                         {
                             // Проверка содержимого сообщения для дальнейшего ответа пользователю в зависимости от содержимого его сообщения.
                             switch (UpdMsg.Message.Text)
                             {
+                                // Вывод информации о профиле.
                                 case "Мой профиль":
-                                    // Вывод информации о профиле.
                                     logBotAnswer = $"<b>Ваш профиль:</b>\n\nID пользователя: {UpdMsg.Message.From!.Id}\nИмя пользователя: {UpdMsg.Message.From.Username ?? UpdMsg.Message.From.FirstName}\nРоль пользователя: {CurrentChattedUser.Role}.";
                                     await bot.SendTextMessageAsync(
                                         chatId: UpdMsg.Message!.Chat.Id,
@@ -53,14 +46,44 @@ namespace CourseManagementBot
                                 case "Курсы":
                                     // Реализовать переход в другой класс для полноценной работы с курсами.
                                     break;
+                                default:
+                                    logBotAnswer = "Я вас не понял. Попробуйте выберать один из вариантов ниже.";
+                                    await bot.SendTextMessageAsync(
+                                        chatId: UpdMsg.Message!.Chat.Id,
+                                        text: logBotAnswer,
+                                        replyMarkup: UserMainReplyKeyboradMarkup,
+                                        cancellationToken: cts.Token);
+                                    Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    break;
                             }
                         }
                         else
                         {
-                            switch(currentUserProccess.Split(' ')[1])
+                            switch(currentUserProccess.CurrentCallBackProccess)
                             {
                                 case "ActivateProfileToken":
-                                    // Здесь происходит проверка токена.
+                                    if (db.ActiveTokens.Any(obj=>obj.Token==UpdMsg.Message.Text) && db.ActiveTokens.First(obj=>obj.Token==UpdMsg.Message.Text).TokenType == "Выдача роли")
+                                    {
+                                        //
+                                        // НЕ РЕАЛИЗОВАНА ПРОВЕРКА МАКСИМАЛЬНО ДОПУСТИМОГО КОЛИЧЕСТВА ВВОДА ТОКЕНА И ДОБАВЛЕНИЕ К ТОКЕНУ ПЛЮС ОДНУ ИСПОЛЬЗОВАННУЮ ПОПЫТКУ.
+                                        //
+                                        db.ChattedUsers.First(obj => obj.Id == UpdMsg.Message.From!.Id.ToString()).Role = db.ActiveTokens.First(obj => obj.Token == UpdMsg.Message.Text).TokenType;
+                                        db.SaveChanges();
+                                        logBotAnswer = $"{char.ConvertFromUtf32(0x2705)} Вы успешно применили токен на получение роли \"{db.ActiveTokens.First(obj => obj.Token == UpdMsg.Message.Text).TokenType}\"!";
+                                        await bot.SendTextMessageAsync(chatId: UpdMsg.Message.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: UserMainReplyKeyboradMarkup,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.Message.From!.Username}: Вы успешно применили токен на получение роли \"{db.ActiveTokens.First(obj => obj.Token == UpdMsg.Message.Text).TokenType}\"!");
+                                    }
+                                    else
+                                    {
+                                        logBotAnswer = $"{char.ConvertFromUtf32(0x274C)} Ошибка.\nДанного токена не существует.";
+                                        await bot.SendTextMessageAsync(chatId: UpdMsg.Message.Chat.Id,
+                                            text: logBotAnswer,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.Message.From!.Username}: Ошибка. Данного токена не существует.");
+                                    }
                                     break;
                             }
                         }
@@ -101,27 +124,66 @@ namespace CourseManagementBot
             new []
             {
                 InlineKeyboardButton.WithCallbackData(text: "Редактировать профиль", callbackData: "EditProfile")
-            },
+            }
+        });
+
+        InlineKeyboardMarkup GoBackInlineKeyboard = new(new[]
+        {
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData(text: "Назад", callbackData: "GoBack")
+            }
         });
 
         // Порядок действий после того, как пользователь нажал inline кнопку.
-        public async void AnswerCallback(Models.ChattedUser CurrentChattedUser, Update UpdMsg, ITelegramBotClient bot, CancellationTokenSource cts, List<string> ProccessCallBackUsers)
+        public async void AnswerCallback(Models.ChattedUser CurrentChattedUser, Update UpdMsg, ITelegramBotClient bot, CancellationTokenSource cts, List<ProccessCallBackUsers> proccessCallBackUsers)
         {
             // Проверка идентификатора нажатой кнопки.
             switch (UpdMsg.CallbackQuery!.Data)
             {
                 case "ActivateProfileToken":
-                    ProccessCallBackUsers.Add($"{UpdMsg.CallbackQuery!.From.Id} ActivateProfileToken");
+                    proccessCallBackUsers.Add(new ProccessCallBackUsers
+                    {
+                        UserID = UpdMsg.CallbackQuery!.From.Id.ToString(),
+                        CurrentCallBackProccess = "ActivateProfileToken"
+                    });
                     await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
-                        UpdMsg.CallbackQuery.Message!.MessageId,
+                        messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                         replyMarkup: null,
                         cancellationToken: cts.Token);
+                    logBotAnswer = "Вы перешли в процесс активации токена.";
+                    await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
+                        text: logBotAnswer,
+                        replyMarkup: GoBackInlineKeyboard,
+                        cancellationToken: cts.Token);
+                    Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.CallbackQuery!.From.Username}: {logBotAnswer}");
                     logBotAnswer = "Введите токен:";
                     await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
                         text: logBotAnswer,
+                        replyMarkup: new ReplyKeyboardRemove(),
                         cancellationToken: cts.Token);
-                    Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.CallbackQuery!.From.Username}: {logBotAnswer}.");
+                    Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.CallbackQuery!.From.Username}: {logBotAnswer}");
                     break;
+                case "GoBack":
+                    try
+                    {
+                        proccessCallBackUsers.Remove(proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()));
+                        await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                            messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                            replyMarkup: null,
+                            cancellationToken: cts.Token);
+                        logBotAnswer = "Вы вернулись в главное меню.\nВыберите следующие предложенные пункты для дальнейшей навигации по системе.";
+                        await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
+                            text: logBotAnswer,
+                            replyMarkup: UserMainReplyKeyboradMarkup,
+                            cancellationToken: cts.Token);
+                        Console.WriteLine($" ~ [{DateTime.Now.ToString("yyyy-MM-dd HH-mm")}] Ответ пользователю @{UpdMsg.CallbackQuery!.From.Username}: {logBotAnswer}");
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        break;
+                    }
                 case "EditProfile":
                     await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
                         text: "Здесь будет функционал редактирования профиля.",

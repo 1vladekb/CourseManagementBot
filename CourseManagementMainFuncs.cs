@@ -3,12 +3,14 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using CourseManagementBot;
+using CourseManagementBot.Models;
 
 TelegramBotClient botClient = new TelegramBotClient("2056051853:AAHKZxIFf7CYf31AgOuJX4r4yiUXj4w6jQ4"); // Токен бота
 using CancellationTokenSource cts = new CancellationTokenSource();
-CourseManagementBot.CheckCurrentUser CheckUser = new CourseManagementBot.CheckCurrentUser(); // Экземпляр объекта проверки пользователя
-CourseManagementBot.Models.CourseManagementDataContext db = new CourseManagementBot.Models.CourseManagementDataContext(); // Экземпляр объекта БД
-List<string> ProccessCallBackUsers = new List<string>();
+CheckCurrentUser CheckUser = new CheckCurrentUser(); // Экземпляр объекта проверки пользователя
+CourseManagementDataContext db = new CourseManagementDataContext(); // Экземпляр объекта БД
+List<ProccessCallBackUsers> proccessCallBackUsers = new List<ProccessCallBackUsers>();
 
 var receiverOptions = new ReceiverOptions
 {
@@ -37,8 +39,8 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
     switch (update.Type)
     {
         case UpdateType.CallbackQuery: // Проверка на CallBack, если пользователь нажал на inline кнопку во вложенном сообщении.
-            Console.WriteLine($"{logDateMsg}Пользователь {update.CallbackQuery!.From.Id} нажал на inline кнопку, содержащую в себе событие {update.CallbackQuery!.Data}."); // Логирование в консоль запуска события пользователем.
-            CheckUser.AnswerCallback(db.ChattedUsers.First(obj => obj.Id == update.CallbackQuery!.From.Id.ToString()), update, botClient, cts, ProccessCallBackUsers); // Вызов обработки события callback запроса от пользователя.
+            Console.WriteLine($"{logDateMsg}Пользователь {update.CallbackQuery!.From.Username} нажал на inline кнопку, содержащую в себе событие {update.CallbackQuery!.Data}."); // Логирование в консоль запуска события пользователем.
+            CheckUser.AnswerCallback(db.ChattedUsers.First(obj => obj.Id == update.CallbackQuery!.From.Id.ToString()), update, botClient, cts, proccessCallBackUsers); // Вызов обработки события callback запроса от пользователя.
             break;
         case UpdateType.Message: // Проверка на сообщение, отправленного боту.
             // Определение типа сообщения (текст, файл, фото и т. д.) и его пропуск, если тип сообщения не подходит.
@@ -82,7 +84,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                     db.Add(chattedUser); // Добавление новой записи в БД
                     db.SaveChanges(); // Сохранение БД
                     Console.WriteLine(" ~ Пользователь был добавлен в БД.");
-                    CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == chattedUser.Id), update, botClient, cts, true, ProccessCallBackUsers); // Отправка приветствия новому пользователю.
+                    CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == chattedUser.Id), update, botClient, cts, true, proccessCallBackUsers); // Отправка приветствия новому пользователю.
                 }
                 // Порядок действий, если пользователя нет в БД и он не написал /start.
                 else
@@ -90,14 +92,14 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                     // Логирование в консоли и отправка сообщения пользователю о том, что нужно прописать /start для дальнейшего взаимодействия с ботом.
                     logBotAnswer = "Для того, чтобы начать взаимодействовать с ботом, напишите /start";
                     Console.WriteLine($" ~ {logDateMsg}Ответ пользователю {update.Message!.From!.Username}: {logBotAnswer}");
-                    Message sentMessage = await botClient.SendTextMessageAsync(
+                    await botClient.SendTextMessageAsync(
                         chatId: update.Message.Chat.Id,
                         text: logBotAnswer,
                         cancellationToken: cancellationToken);
                 }
             }
             else
-                CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == update.Message.From!.Id.ToString()), update, botClient, cts, false, ProccessCallBackUsers); // Вызов проверки текущего сообщения для дальнейшего ответа от бота.
+                CheckUser.Check(db.ChattedUsers.First(obj=>obj.Id == update.Message.From!.Id.ToString()), update, botClient, cts, false, proccessCallBackUsers); // Вызов проверки текущего сообщения для дальнейшего ответа от бота.
         }
         // Ошибка БД.
         catch (Exception ex)
