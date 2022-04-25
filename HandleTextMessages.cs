@@ -17,7 +17,8 @@ namespace CourseManagementBot
     {
         private string logBotAnswer = ""; // Строка для заполнения информации, которую будет передавать бот.
         private readonly CourseManagementDataContext db = new();
-        private readonly Keyboards keyboards = new(); // Клавиатуры для дальнейшего отправления их пользователю для навигации.
+        private readonly Keyboards keyboards = new(); // Клавиатуры для дальнейшего отправления их пользователю для навигации
+        //private static string currentCoursePosBack="", currentCoursePosOfAllEle="", currentCoursePosNext="";
         public async Task AnswerMessage(ChattedUser? CurrentChattedUser, Update UpdMsg, ITelegramBotClient bot, CancellationTokenSource cts, List<ProccessCallBackUsers> proccessCallBackUsers)
         {
             // Проверка пользователя на новизну.
@@ -45,8 +46,69 @@ namespace CourseManagementBot
                                         cancellationToken: cts.Token);
                                     Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
                                     break;
-                                case "Курсы":
-                                    // Реализовать переход в другой класс для полноценной работы с курсами.
+                                // Вывод информации о собственных курсах.
+                                case "Мои курсы":
+                                    // Переменная, получающая список курсов, которыми владеет пользователь.
+                                    var currentUserCourses = db.Courses.Where(obj=>obj.Curator==UpdMsg.Message.From!.Id.ToString()).ToDictionary(obj=>obj.Id.ToString(),obj=>obj.Name);
+                                    // Проверка на наличие владения хотя бы одним курсом пользователя.
+                                    if (currentUserCourses.Count() != 0)
+                                    {
+                                        logBotAnswer = "Список ваших курсов:";
+                                        // Создаем динамическую клавиатуру из записей всех курсов, принадлежащих пользователю, и передаем их с уникальным идентификатором CallBackData - ownCourses для дальнейшей обработки конкретной записи.
+                                        var keyboardMarkup = new InlineKeyboardMarkup(GetInlineKeyboard(currentUserCourses, "ownCourses"));
+
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboardMarkup,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    }
+                                    // Вывод сообщения об ошибке пользователю, если пользователь не владеет ни одним курсом.
+                                    else
+                                    {
+                                        logBotAnswer = "Вы не владеете ни одним курсом.";
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboards.CreateCourseInlineKeyboard, // Прикрепление функции создания курса для пользователя после ошибки.
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    }
+                                    break;
+                                // Вывод информации о курсах, на которые пользователь подписался.
+                                case "Подписки":
+                                    var currentCoursesMember = (from courses in db.Courses
+                                                               join courseUser in db.CourseUsers on courses.Id equals courseUser.Course
+                                                               where courseUser.PinnedUser == UpdMsg.Message.From!.Id.ToString()
+                                                               select courses).ToDictionary(obj=>obj.Id.ToString(), obj=>obj.Name);
+                                    // Проверка на подписку хотя бы на один курс.
+                                    if (currentCoursesMember.Count() != 0)
+                                    {
+                                        logBotAnswer = "Список ваших подписок на курсы:";
+                                        // Создаем динамическую клавиатуру из записей всех курсов, На которых подписан пользователь, и передаем их с уникальным идентификатором CallBackData - coursesMember для дальнейшей обработки конкретной записи.
+                                        var keyboardMarkup = new InlineKeyboardMarkup(GetInlineKeyboard(currentCoursesMember, "coursesMember"));
+
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboardMarkup,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    }
+                                    // Вывод сообщения об ошибке пользователю, если пользователь не подписан ни на один курс.
+                                    else
+                                    {
+                                        logBotAnswer = "Вы не подписаны ни на один курс.";
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboards.JoinCourseByTokenInlineKeyboard, // Прикрепление функции присоединения к курсу по токену для пользователя после ошибки.
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    }
                                     break;
                                 // Вывод сообщения об ошибке пользователю в случае, если он написал сообщение, не соответствующее условиям для дальнейшей работы.
                                 default:
@@ -112,6 +174,120 @@ namespace CourseManagementBot
                                         Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message.From!.Username??UpdMsg.Message.From.FirstName}: Ошибка. Данного токена не существует.");
                                     }
                                     break;
+                                case "filterOwnCourses":
+                                    var currentUserCoursesFiltered = db.Courses.Where(obj => obj.Curator == UpdMsg.Message.From!.Id.ToString() && obj.Name.Contains(UpdMsg.Message.Text!)).ToDictionary(obj => obj.Id.ToString(), obj => obj.Name);
+                                    if (currentUserCoursesFiltered.Count() != 0)
+                                    {
+                                        logBotAnswer = "Результаты поиска:";
+                                        // Создаем динамическую клавиатуру из записей всех курсов, принадлежащих пользователю, и передаем их с уникальным идентификатором CallBackData - ownCourses для дальнейшей обработки конкретной записи.
+                                        var keyboardMarkup = new InlineKeyboardMarkup(GetInlineKeyboard(currentUserCoursesFiltered, "ownCourses"));
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
+                                            cancellationToken: cts.Token);
+                                        logBotAnswer = $"Всего найдено {currentUserCoursesFiltered.Count()} результатов";
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboardMarkup,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                        proccessCallBackUsers.Remove(currentUserProccess); // Удаление пользователя из CallBack запроса / возвращаем пользователя в главное меню.
+                                    }
+                                    // Вывод сообщения об ошибке пользователю, если пользователь не владеет ни одним курсом.
+                                    else
+                                    {
+                                        logBotAnswer = "Совпадения не найдены.";
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer, // Прикрепление функции создания курса для пользователя после ошибки.
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    }
+                                    break;
+                                case "filterCoursesMember":
+                                    var currentCoursesMemberFiltered = (from courses in db.Courses
+                                                                join courseUser in db.CourseUsers on courses.Id equals courseUser.Course
+                                                                where courseUser.PinnedUser == UpdMsg.Message.From!.Id.ToString()
+                                                                select courses).Where(obj=>obj.Name.Contains(UpdMsg.Message.Text!)).ToDictionary(obj => obj.Id.ToString(), obj => obj.Name);
+                                    if (currentCoursesMemberFiltered.Count() != 0)
+                                    {
+                                        logBotAnswer = "Результат поиска:";
+                                        // Создаем динамическую клавиатуру из записей всех курсов, принадлежащих пользователю, и передаем их с уникальным идентификатором CallBackData - ownCourses для дальнейшей обработки конкретной записи.
+                                        var keyboardMarkup = new InlineKeyboardMarkup(GetInlineKeyboard(currentCoursesMemberFiltered, "coursesMember"));
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
+                                            cancellationToken: cts.Token);
+                                        logBotAnswer = $"Всего найдено {currentCoursesMemberFiltered.Count()} результатов";
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: keyboardMarkup,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                        proccessCallBackUsers.Remove(currentUserProccess); // Удаление пользователя из CallBack запроса / возвращаем пользователя в главное меню.
+                                    }
+                                    // Вывод сообщения об ошибке пользователю, если пользователь не владеет ни одним курсом.
+                                    else
+                                    {
+                                        logBotAnswer = "Совпадения не найдены.";
+                                        await bot.SendTextMessageAsync(
+                                            chatId: UpdMsg.Message!.Chat.Id,
+                                            text: logBotAnswer, // Прикрепление функции создания курса для пользователя после ошибки.
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message!.From!.Username}: {logBotAnswer}");
+                                    }
+                                    break;
+                                case "JoinCourseByToken":
+                                    // Проверка введенного токена на актуальные токены в БД.
+                                    ActiveToken? currentCourseToken = db.ActiveTokens.FirstOrDefault(obj => obj.Token == UpdMsg.Message.Text);
+                                    if (currentCourseToken != null)
+                                    {
+                                        var currentCourse = db.Courses.FirstOrDefault(obj => obj.Token == currentCourseToken.Token);
+                                        if (currentCourse != null)
+                                        {
+                                            // Проверка типа токена на соответствующий CallBack запросу (т.к. известно, что пользователь в CallBack запросе активации токена для ПОЛУЧЕНИЯ РОЛИ, то проверять нужно тип токена, который предназначен именно на получение роли).
+                                            if (currentCourseToken.TokenType == "Присоединение к курсу")
+                                            {
+                                                logBotAnswer = $"Найден следующий курс:\n\n<b>{currentCourse.Name}</b>\n\nВы уверены, что хотите подписаться на курс?";
+                                                Dictionary<string, string> courseJoinChoiceButtons = new()
+                                                {
+                                                    { "acceptJoinCourse-"+currentCourseToken.Token, "Да" },
+                                                    { "GoBack", "Нет" }
+                                                };
+                                                var courseJoinChoiceInlineKeyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseJoinChoiceButtons, currentCourse.Id.ToString()));
+                                                await bot.SendTextMessageAsync(
+                                                    chatId: UpdMsg.Message!.Chat.Id,
+                                                    text: logBotAnswer,
+                                                    replyMarkup: courseJoinChoiceInlineKeyboard,
+                                                    parseMode: ParseMode.Html,
+                                                    cancellationToken: cts.Token);
+                                            }
+                                            else
+                                            {
+                                                logBotAnswer = $"{char.ConvertFromUtf32(0x274C)} Ошибка.\nТокен был введён неверно.";
+                                                await bot.SendTextMessageAsync(chatId: UpdMsg.Message.Chat.Id,
+                                                    text: logBotAnswer,
+                                                    cancellationToken: cts.Token);
+                                                Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message.From!.Username ?? UpdMsg.Message.From.FirstName}: Ошибка. Токен был введён неверно.");
+                                            }
+                                        }
+                                    }
+                                    // Алгоритм действий в случае, если пользователь ввёл неверный токен (тот токен, которого не существует в БД).
+                                    else
+                                    {
+                                        logBotAnswer = $"{char.ConvertFromUtf32(0x274C)} Ошибка.\nДанного токена не существует.";
+                                        await bot.SendTextMessageAsync(chatId: UpdMsg.Message.Chat.Id,
+                                            text: logBotAnswer,
+                                            cancellationToken: cts.Token);
+                                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.Message.From!.Username ?? UpdMsg.Message.From.FirstName}: Ошибка. Данного токена не существует.");
+                                    }
+                                    break;
                             }
                         }
                         break;
@@ -159,6 +335,56 @@ namespace CourseManagementBot
             }
         }
 
-        
+        // Метод для динамического формирования inline кнопок.
+        public static InlineKeyboardButton[][] GetInlineKeyboard(Dictionary<string, string> keyboardsValues, string callbackName)
+        {
+            int countKeyboards = (callbackName == "ownCourses" || callbackName == "coursesMember") ? keyboardsValues.Count + 1 : keyboardsValues.Count;
+            var keyboardInline = new InlineKeyboardButton[countKeyboards][];
+            int j = 0; // Переменная для обозначения итерации цикла.
+
+            foreach (var keyboardsValue in keyboardsValues) // Цикл, шагающий по библиотеке данных о курсах для дальнейшего размещения их на кнопки (1 аргумент).
+            {
+                var keyboardButtons = new InlineKeyboardButton[1];
+                keyboardButtons[0] = new InlineKeyboardButton(keyboardsValue.Value)
+                {
+                    Text = keyboardsValue.Value,
+                    CallbackData = callbackName + keyboardsValue.Key
+                };
+                keyboardInline[j] = keyboardButtons;
+                j++;
+            }
+            if (callbackName == "ownCourses")
+            {
+                var keyboardButtons = new InlineKeyboardButton[2];
+                keyboardButtons[0] = new InlineKeyboardButton("Поиск")
+                {
+                    Text = "Поиск",
+                    CallbackData = "filterOwnCourses"
+                };
+                keyboardButtons[1] = new InlineKeyboardButton("Создать курс")
+                {
+                    Text = "Создать курс",
+                    CallbackData = "CreateCourse"
+                };
+                keyboardInline[j] = keyboardButtons;
+            }
+            if (callbackName == "coursesMember")
+            {
+                var keyboardButtons = new InlineKeyboardButton[2];
+                keyboardButtons[0] = new InlineKeyboardButton("Поиск")
+                {
+                    Text = "Поиск",
+                    CallbackData = "filterCoursesMember"
+                };
+                keyboardButtons[1] = new InlineKeyboardButton("Присоединиться к курсу по токену")
+                {
+                    Text = "Присоединиться к курсу по токену",
+                    CallbackData = "JoinCourseByToken"
+                };
+                keyboardInline[j] = keyboardButtons;
+            }
+
+            return keyboardInline;
+        }
     }
 }

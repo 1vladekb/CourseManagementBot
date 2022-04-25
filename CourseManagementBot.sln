@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CourseManagementBot", "CourseManagementBot.csproj", "{DA7CE8A7-DBCA-40EB-9259-FD8F20A9E9FA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CourseManagementBot", "CourseManagementBot.csproj", "{DA7CE8A7-DBCA-40EB-9259-FD8F20A9E9FA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "..\ConsoleApp1\ConsoleApp1.csproj", "{BFE35677-56E5-4ABA-8A27-C9D7DD1EEF2F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{DA7CE8A7-DBCA-40EB-9259-FD8F20A9E9FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA7CE8A7-DBCA-40EB-9259-FD8F20A9E9FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA7CE8A7-DBCA-40EB-9259-FD8F20A9E9FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BFE35677-56E5-4ABA-8A27-C9D7DD1EEF2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFE35677-56E5-4ABA-8A27-C9D7DD1EEF2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFE35677-56E5-4ABA-8A27-C9D7DD1EEF2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFE35677-56E5-4ABA-8A27-C9D7DD1EEF2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
