@@ -88,5 +88,13 @@ namespace CourseManagementBot
                 InlineKeyboardButton.WithCallbackData(text: "Присоединиться к курсу по токену", callbackData: "JoinCourseByToken")
             }
         });
+
+        public readonly InlineKeyboardMarkup EditCourseElementGoBack = new(new[]
+        {
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData(text: "Назад", callbackData: "editCourseElementGoBack")
+            }
+        });
     }
 }
