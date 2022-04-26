@@ -300,7 +300,7 @@ namespace CourseManagementBot
                                             cancellationToken: cts.Token);
                                         logBotAnswer = $"Вы перешли в конструктор редактирования курса\n<b>{currentCourseNameEdit.Name}</b>.";
                                         string isPrivateCourseAnswer = currentCourseNameEdit.IsPrivate == true ? "Курс является приватным" : "Курс не является приватным";
-                                        string tokenCourseAnswer = currentCourseNameEdit.Token == null ? "Добавить токен" : "Токен курса";
+                                        string tokenCourseAnswer = currentCourseNameEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentEditingCourse.Token}";
                                         Dictionary<string, string> courseJoinChoiceButtons = new()
                                         {
                                             { "editCourseName", $"Название курса ({currentCourseNameEdit.Name})" },
@@ -329,7 +329,7 @@ namespace CourseManagementBot
                                             cancellationToken: cts.Token);
                                         logBotAnswer = $"Вы перешли в конструктор редактирования курса\n<b>{currentCourseDescriptionEdit.Name}</b>.";
                                         string isPrivateCourseAnswer = currentCourseDescriptionEdit.IsPrivate == true ? "Курс является приватным" : "Курс не является приватным";
-                                        string tokenCourseAnswer = currentCourseDescriptionEdit.Token == null ? "Добавить токен" : "Токен курса";
+                                        string tokenCourseAnswer = currentCourseDescriptionEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentEditingCourse.Token}";
                                         Dictionary<string, string> courseJoinChoiceButtons = new()
                                         {
                                             { "editCourseName", $"Название курса ({currentCourseDescriptionEdit.Name})" },
@@ -358,7 +358,7 @@ namespace CourseManagementBot
                                             cancellationToken: cts.Token);
                                         logBotAnswer = $"Вы перешли в конструктор редактирования курса\n<b>{currentCourseRequisitesEdit.Name}</b>.";
                                         string isPrivateCourseAnswer = currentCourseRequisitesEdit.IsPrivate == true ? "Курс является приватным" : "Курс не является приватным";
-                                        string tokenCourseAnswer = currentCourseRequisitesEdit.Token == null ? "Добавить токен" : "Токен курса";
+                                        string tokenCourseAnswer = currentCourseRequisitesEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentEditingCourse.Token}";
                                         Dictionary<string, string> courseJoinChoiceButtons = new()
                                         {
                                             { "editCourseName", $"Название курса ({currentCourseRequisitesEdit.Name})" },
