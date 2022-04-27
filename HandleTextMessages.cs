@@ -10,6 +10,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using CourseManagementBot.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseManagementBot
 {
@@ -49,7 +50,7 @@ namespace CourseManagementBot
                                 // Вывод информации о собственных курсах.
                                 case "Мои курсы":
                                     // Переменная, получающая список курсов, которыми владеет пользователь.
-                                    var currentUserCourses = db.Courses.Where(obj=>obj.Curator==UpdMsg.Message.From!.Id.ToString()).ToDictionary(obj=>obj.Id.ToString(),obj=>obj.Name);
+                                    var currentUserCourses = db.Courses.AsNoTracking().Where(obj=>obj.Curator==UpdMsg.Message.From!.Id.ToString()).ToDictionary(obj=>obj.Id.ToString(),obj=>obj.Name);
                                     // Проверка на наличие владения хотя бы одним курсом пользователя.
                                     if (currentUserCourses.Count() != 0)
                                     {
@@ -300,8 +301,8 @@ namespace CourseManagementBot
                                             cancellationToken: cts.Token);
                                         logBotAnswer = $"Вы перешли в конструктор редактирования курса\n<b>{currentCourseNameEdit.Name}</b>.";
                                         string isPrivateCourseAnswer = currentCourseNameEdit.IsPrivate == true ? "Курс является приватным" : "Курс не является приватным";
-                                        string tokenCourseAnswer = currentCourseNameEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentEditingCourse.Token}";
-                                        Dictionary<string, string> courseJoinChoiceButtons = new()
+                                        string tokenCourseAnswer = currentCourseNameEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentCourseNameEdit.Token}";
+                                        Dictionary<string, string> courseEditChoiceButtons = new()
                                         {
                                             { "editCourseName", $"Название курса ({currentCourseNameEdit.Name})" },
                                             { "editCourseDescription", "Описание курса" },
@@ -310,7 +311,7 @@ namespace CourseManagementBot
                                             { "editCourseToken", tokenCourseAnswer },
                                             { "editCourseGoBack", "Назад" }
                                         };
-                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseJoinChoiceButtons, currentCourseNameEdit.Id.ToString()));
+                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseEditChoiceButtons, currentCourseNameEdit.Id.ToString()));
                                         await bot.SendTextMessageAsync(UpdMsg.Message.From!.Id,
                                             text: logBotAnswer,
                                             replyMarkup: currentCourseEditingInlinePanel,
@@ -323,14 +324,15 @@ namespace CourseManagementBot
                                         var currentCourseDescriptionEdit = db.Courses.First(obj => obj.Id == Convert.ToInt32(currentUserProccess.CurrentCallBackProccess.Replace("editCourseDescription", "")));
                                         currentCourseDescriptionEdit.Description = UpdMsg.Message.Text!;
                                         db.SaveChanges();
-                                        logBotAnswer = "Название было успешно изменено";
+                                        db.Update(currentCourseDescriptionEdit);
+                                        logBotAnswer = "Описание курса было успешно изменено";
                                         await bot.SendTextMessageAsync(chatId: UpdMsg.Message.From!.Id,
                                             text: logBotAnswer,
                                             cancellationToken: cts.Token);
                                         logBotAnswer = $"Вы перешли в конструктор редактирования курса\n<b>{currentCourseDescriptionEdit.Name}</b>.";
                                         string isPrivateCourseAnswer = currentCourseDescriptionEdit.IsPrivate == true ? "Курс является приватным" : "Курс не является приватным";
-                                        string tokenCourseAnswer = currentCourseDescriptionEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentEditingCourse.Token}";
-                                        Dictionary<string, string> courseJoinChoiceButtons = new()
+                                        string tokenCourseAnswer = currentCourseDescriptionEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentCourseDescriptionEdit.Token}";
+                                        Dictionary<string, string> courseEditChoiceButtons = new()
                                         {
                                             { "editCourseName", $"Название курса ({currentCourseDescriptionEdit.Name})" },
                                             { "editCourseDescription", "Описание курса" },
@@ -339,7 +341,7 @@ namespace CourseManagementBot
                                             { "editCourseToken", tokenCourseAnswer },
                                             { "editCourseGoBack", "Назад" }
                                         };
-                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseJoinChoiceButtons, currentCourseDescriptionEdit.Id.ToString()));
+                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseEditChoiceButtons, currentCourseDescriptionEdit.Id.ToString()));
                                         await bot.SendTextMessageAsync(UpdMsg.Message.From!.Id,
                                             text: logBotAnswer,
                                             replyMarkup: currentCourseEditingInlinePanel,
@@ -352,14 +354,15 @@ namespace CourseManagementBot
                                         var currentCourseRequisitesEdit = db.Courses.First(obj => obj.Id == Convert.ToInt32(currentUserProccess.CurrentCallBackProccess.Replace("editCourseName", "")));
                                         currentCourseRequisitesEdit.Requisites = UpdMsg.Message.Text!;
                                         db.SaveChanges();
-                                        logBotAnswer = "Название было успешно изменено";
+                                        db.Update(currentCourseRequisitesEdit);
+                                        logBotAnswer = "Реквизиты курса были успешно изменены";
                                         await bot.SendTextMessageAsync(chatId: UpdMsg.Message.From!.Id,
                                             text: logBotAnswer,
                                             cancellationToken: cts.Token);
                                         logBotAnswer = $"Вы перешли в конструктор редактирования курса\n<b>{currentCourseRequisitesEdit.Name}</b>.";
                                         string isPrivateCourseAnswer = currentCourseRequisitesEdit.IsPrivate == true ? "Курс является приватным" : "Курс не является приватным";
-                                        string tokenCourseAnswer = currentCourseRequisitesEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentEditingCourse.Token}";
-                                        Dictionary<string, string> courseJoinChoiceButtons = new()
+                                        string tokenCourseAnswer = currentCourseRequisitesEdit.Token == null ? "Добавить токен" : $"Токен курса - {currentCourseRequisitesEdit.Token}";
+                                        Dictionary<string, string> courseEditChoiceButtons = new()
                                         {
                                             { "editCourseName", $"Название курса ({currentCourseRequisitesEdit.Name})" },
                                             { "editCourseDescription", "Описание курса" },
@@ -368,13 +371,96 @@ namespace CourseManagementBot
                                             { "editCourseToken", tokenCourseAnswer },
                                             { "editCourseGoBack", "Назад" }
                                         };
-                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseJoinChoiceButtons, currentCourseRequisitesEdit.Id.ToString()));
+                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseEditChoiceButtons, currentCourseRequisitesEdit.Id.ToString()));
                                         await bot.SendTextMessageAsync(UpdMsg.Message.From!.Id,
                                             text: logBotAnswer,
                                             replyMarkup: currentCourseEditingInlinePanel,
                                             parseMode: ParseMode.Html,
                                             cancellationToken: cts.Token);
                                         currentUserProccess.CurrentCallBackProccess = "EditCourse";
+                                    }
+                                    if (currentUserProccess.CurrentCallBackProccess! == "createCourseName")
+                                    {
+                                        var currentCourseCreating = HandleCallBacks.tempCreatingCourseObjects.FirstOrDefault(obj => obj.Key == UpdMsg.Message.From!.Id.ToString());
+                                        currentCourseCreating.Value.Name = UpdMsg.Message.Text!;
+                                        logBotAnswer = "Название курса было успешно изменено.";
+                                        await bot.SendTextMessageAsync(chatId: UpdMsg.Message.From!.Id,
+                                            text: logBotAnswer,
+                                            cancellationToken: cts.Token);
+                                        logBotAnswer = $"Вы перешли в конструктор создания курса.\nВыберите пункты на панели ниже для заполнения информации о курсе.\n* - обязательное поле для заполнения.";
+                                        Dictionary<string, string> courseCreateChoiceButtons = new()
+                                        {
+                                            { "createCourseName", currentCourseCreating.Value.Name == null ? "*Название курса" : $"Название курса ({currentCourseCreating.Value.Name})" },
+                                            { "createCourseDescription", "Описание курса" },
+                                            { "createCourseIsPrivate", currentCourseCreating.Value.IsPrivate == false ? "Сделать курс приватным" : "Сделать курс публичным" },
+                                            { "createCourseRequisites", "Реквизиты курса" },
+                                            { "createCourseToken", currentCourseCreating.Value.Token == null ? "Добавить токен" : $"Сменить токен ({currentCourseCreating.Value.Token})" },
+                                            { "createCourseGoBack", "Назад" },
+                                            { "createCourseSaveAndGoBack", "Сохранить и вернуться" }
+                                        };
+                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseCreateChoiceButtons, ""));
+                                        await bot.SendTextMessageAsync(UpdMsg.Message.From!.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: currentCourseEditingInlinePanel,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        currentUserProccess.CurrentCallBackProccess = "CreateCourse";
+                                    }
+                                    if (currentUserProccess.CurrentCallBackProccess! == "createCourseDescription")
+                                    {
+                                        HandleCallBacks handleCallBacks = new();
+                                        var currentCourseCreating = HandleCallBacks.tempCreatingCourseObjects.First(obj => obj.Key == UpdMsg.Message.From!.Id.ToString());
+                                        currentCourseCreating.Value.Name = UpdMsg.Message.Text!;
+                                        logBotAnswer = "Описание курса было успешно изменено.";
+                                        await bot.SendTextMessageAsync(chatId: UpdMsg.Message.From!.Id,
+                                            text: logBotAnswer,
+                                            cancellationToken: cts.Token);
+                                        logBotAnswer = $"Вы перешли в конструктор создания курса.\nВыберите пункты на панели ниже для заполнения информации о курсе.\n* - обязательное поле для заполнения.";
+                                        Dictionary<string, string> courseCreateChoiceButtons = new()
+                                        {
+                                            { "createCourseName", currentCourseCreating.Value.Name == null ? "*Название курса" : $"Название курса ({currentCourseCreating.Value.Name})" },
+                                            { "createCourseDescription", "Описание курса" },
+                                            { "createCourseIsPrivate", currentCourseCreating.Value.IsPrivate == false ? "Сделать курс приватным" : "Сделать курс публичным" },
+                                            { "createCourseRequisites", "Реквизиты курса" },
+                                            { "createCourseToken", currentCourseCreating.Value.Token == null ? "Добавить токен" : $"Сменить токен ({currentCourseCreating.Value.Token})" },
+                                            { "createCourseGoBack", "Назад" },
+                                            { "createCourseSaveAndGoBack", "Сохранить и вернуться" }
+                                        };
+                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseCreateChoiceButtons, ""));
+                                        await bot.SendTextMessageAsync(UpdMsg.Message.From!.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: currentCourseEditingInlinePanel,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        currentUserProccess.CurrentCallBackProccess = "CreateCourse";
+                                    }
+                                    if (currentUserProccess.CurrentCallBackProccess! == "createCourseRequisites")
+                                    {
+                                        HandleCallBacks handleCallBacks = new();
+                                        var currentCourseCreating = HandleCallBacks.tempCreatingCourseObjects.First(obj => obj.Key == UpdMsg.Message.From!.Id.ToString());
+                                        currentCourseCreating.Value.Name = UpdMsg.Message.Text!;
+                                        logBotAnswer = "Реквизи курса было успешно изменены.";
+                                        await bot.SendTextMessageAsync(chatId: UpdMsg.Message.From!.Id,
+                                            text: logBotAnswer,
+                                            cancellationToken: cts.Token);
+                                        logBotAnswer = $"Вы перешли в конструктор создания курса.\nВыберите пункты на панели ниже для заполнения информации о курсе.\n* - обязательное поле для заполнения.";
+                                        Dictionary<string, string> courseCreateChoiceButtons = new()
+                                        {
+                                            { "createCourseName", currentCourseCreating.Value.Name == null ? "*Название курса" : $"Название курса ({currentCourseCreating.Value.Name})" },
+                                            { "createCourseDescription", "Описание курса" },
+                                            { "createCourseIsPrivate", currentCourseCreating.Value.IsPrivate == false ? "Сделать курс приватным" : "Сделать курс публичным" },
+                                            { "createCourseRequisites", "Реквизиты курса" },
+                                            { "createCourseToken", currentCourseCreating.Value.Token == null ? "Добавить токен" : $"Сменить токен ({currentCourseCreating.Value.Token})" },
+                                            { "createCourseGoBack", "Назад" },
+                                            { "createCourseSaveAndGoBack", "Сохранить и вернуться" }
+                                        };
+                                        var currentCourseEditingInlinePanel = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseCreateChoiceButtons, ""));
+                                        await bot.SendTextMessageAsync(UpdMsg.Message.From!.Id,
+                                            text: logBotAnswer,
+                                            replyMarkup: currentCourseEditingInlinePanel,
+                                            parseMode: ParseMode.Html,
+                                            cancellationToken: cts.Token);
+                                        currentUserProccess.CurrentCallBackProccess = "CreateCourse";
                                     }
                                     break;
                             }
