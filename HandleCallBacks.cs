@@ -182,6 +182,7 @@ namespace CourseManagementBot
                                 replyMarkup: currentCourseEditingInlinePanel,
                                 parseMode: ParseMode.Html,
                                 cancellationToken: cts.Token);
+                            break;
                         }
                         else
                         {
@@ -210,6 +211,7 @@ namespace CourseManagementBot
                                 replyMarkup: currentCourseEditingInlinePanel,
                                 parseMode: ParseMode.Html,
                                 cancellationToken: cts.Token);
+                            break;
                         }
                     }
                     break;
@@ -255,6 +257,7 @@ namespace CourseManagementBot
                             replyMarkup: currentCourseEditingInlinePanel,
                             parseMode: ParseMode.Html,
                             cancellationToken: cts.Token);
+                        break;
                     }
                     break;
 
@@ -310,6 +313,7 @@ namespace CourseManagementBot
                                 replyMarkup: currentCourseInlineKeyboard,
                                 parseMode: ParseMode.Html,
                                 cancellationToken: cts.Token);
+                            break;
                         }
 
                         // Проверяем, является ли пользователь, сделавший запрос, участником курса.
@@ -372,6 +376,7 @@ namespace CourseManagementBot
                                 replyMarkup: currentCourseInlineKeyboard,
                                 parseMode: ParseMode.Html,
                                 cancellationToken: cts.Token);
+                            break;
                         }
 
                         if (UpdMsg.CallbackQuery.Data!.Contains("filterOwnCourses") || UpdMsg.CallbackQuery.Data!.Contains("filterCoursesMember"))
@@ -452,6 +457,7 @@ namespace CourseManagementBot
                                     replyMarkup: courseLeaveChoiceInlineKeyboard,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                         }
 
@@ -483,6 +489,7 @@ namespace CourseManagementBot
                                     replyMarkup: courseLeaveChoiceInlineKeyboard,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                         }
 
@@ -524,6 +531,7 @@ namespace CourseManagementBot
                                     replyMarkup: currentCourseEditingInlinePanel,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                         }
                     }
@@ -546,6 +554,7 @@ namespace CourseManagementBot
                                 cancellationToken: cts.Token);
                             var currentUserProccess = proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
                             proccessCallBackUsers.Remove(currentUserProccess);
+                            break;
                         }
                         if (UpdMsg.CallbackQuery.Data!.Contains("acceptJoinCourse"))
                         {
@@ -576,6 +585,7 @@ namespace CourseManagementBot
                                 Console.WriteLine(" ~ Токен был успешно удалён.");
                             }
                             db.SaveChanges();
+                            break;
                         }
                         if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "LeaveCourse")
                         {
@@ -595,6 +605,7 @@ namespace CourseManagementBot
                                     cancellationToken: cts.Token);
                                 var currentUserProccess = proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
                                 proccessCallBackUsers.Remove(currentUserProccess);
+                                break;
                             }
                         }
                         if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "EditCourse")
@@ -620,6 +631,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data!.Contains("editCourseDescription"))
                             {
@@ -642,6 +654,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data!.Contains("editCourseRequisites"))
                             {
@@ -664,6 +677,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data!.Contains("editCourseIsPrivate"))
                             {
@@ -691,6 +705,7 @@ namespace CourseManagementBot
                                     messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                     replyMarkup: currentCourseEditingInlinePanel,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data!.Contains("editCourseToken"))
                             {
@@ -732,6 +747,7 @@ namespace CourseManagementBot
                                     messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                     replyMarkup: currentCourseEditingInlinePanel,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data!.Contains("editCourseGoBack"))
                             {
@@ -786,6 +802,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                         }
                         if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "CreateCourse")
@@ -810,6 +827,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data! == "createCourseDescription")
                             {
@@ -831,6 +849,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data! == "createCourseRequisites")
                             {
@@ -852,6 +871,7 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     parseMode: ParseMode.Html,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data! == "createCourseIsPrivate")
                             {
@@ -876,6 +896,7 @@ namespace CourseManagementBot
                                     messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                     replyMarkup: currentCourseEditingInlinePanel,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data! == "createCourseToken")
                             {
@@ -905,6 +926,7 @@ namespace CourseManagementBot
                                     messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                     replyMarkup: currentCourseEditingInlinePanel,
                                     cancellationToken: cts.Token);
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data! == "createCourseSaveAndGoBack")
                             {
@@ -934,6 +956,7 @@ namespace CourseManagementBot
                                         parseMode: ParseMode.Html,
                                         cancellationToken: cts.Token);
                                 }
+                                break;
                             }
                             if (UpdMsg.CallbackQuery.Data! == "createCourseGoBack")
                             {
@@ -948,7 +971,9 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
                                     cancellationToken: cts.Token);
+                                break;
                             }
+                            break;
                         }
                     }
                     break;
