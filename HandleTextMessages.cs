@@ -480,7 +480,7 @@ namespace CourseManagementBot
                     ChattedUser chattedUser = new()
                     {
                         Id = UpdMsg.Message.From!.Id.ToString(),
-                        ChatId = UpdMsg.Message.Chat.Id.ToString(),
+                        ChatId = "1",
                         Name = UpdMsg.Message.From.Username ?? UpdMsg.Message.From.FirstName, // Если имя пользователя отсутствует, будет присваиваться обычное имя.
                         Role = "Пользователь"
                     };
@@ -523,7 +523,7 @@ namespace CourseManagementBot
                 keyboardButtons[0] = new InlineKeyboardButton(keyboardsValue.Value)
                 {
                     Text = keyboardsValue.Value,
-                    CallbackData = callbackName + keyboardsValue.Key
+                    CallbackData = callbackName + keyboardsValue.Key,
                 };
                 keyboardInline[j] = keyboardButtons;
                 j++;
@@ -559,6 +559,43 @@ namespace CourseManagementBot
                 keyboardInline[j] = keyboardButtons;
             }
 
+            return keyboardInline;
+        }
+        public static InlineKeyboardButton[][] GetUrlInlineKeyboard(Dictionary<string, string>? keyboardsValues, string callbackName)
+        {
+            int countKeyboards = (callbackName.Contains("courseOwnAssignment")) ? (keyboardsValues!=null ? keyboardsValues.Count + 1 : 1) : (keyboardsValues!=null ? keyboardsValues.Count : 0);
+            var keyboardInline = new InlineKeyboardButton[countKeyboards][];
+            int j = 0; // Переменная для обозначения итерации цикла.
+            if (keyboardsValues != null)
+            {
+
+                foreach (var keyboardsValue in keyboardsValues) // Цикл, шагающий по библиотеке данных о курсах для дальнейшего размещения их на кнопки (1 аргумент).
+                {
+                    var keyboardButtons = new InlineKeyboardButton[1];
+                    keyboardButtons[0] = new InlineKeyboardButton(keyboardsValue.Value)
+                    {
+                        Text = keyboardsValue.Value,
+                        Url = keyboardsValue.Key
+                    };
+                    keyboardInline[j] = keyboardButtons;
+                    j++;
+                }
+            }
+            if (callbackName.Contains("courseOwnAssignment"))
+            {
+                var keyboardButtons = new InlineKeyboardButton[2];
+                keyboardButtons[0] = new InlineKeyboardButton("Создать тему")
+                {
+                    Text = "Создать тему",
+                    CallbackData = "createCourseAssignment" + callbackName.Replace("courseOwnAssignment", "")
+                };
+                keyboardButtons[1] = new InlineKeyboardButton("Получить доступ к редактированию с этого устр-ва")
+                {
+                    Text = "Получить доступ к редактированию с этого устр-ва",
+                    CallbackData = "getAssignmentsAccess" + callbackName.Replace("courseOwnAssignment", "")
+                };
+                keyboardInline[j] = keyboardButtons;
+            }
             return keyboardInline;
         }
     }

@@ -9,6 +9,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot;
 using Microsoft.EntityFrameworkCore;
+using Telegraph.Net.Models;
+using Telegraph.Net;
 
 namespace CourseManagementBot
 {
@@ -299,6 +301,7 @@ namespace CourseManagementBot
                             // Так мы сможем понять, какую кнопку для управления курсом он нажал конкретно и каким курсом он хочет управлять.
                             Dictionary<string, string> courseManageButtons = new()
                             {
+                                { "courseOwnAssignmentsList", "Темы" },
                                 { "EditCourse", "Редактировать курс" },
                                 { "DeleteCourse", "Удалить курс" },
                                 { "CourseMemberList", "Список участников" },
@@ -354,6 +357,7 @@ namespace CourseManagementBot
                                 // Так мы сможем понять, какую кнопку для управления курсом он нажал конкретно и каким курсом он хочет управлять.
                                 courseManageButtons = new()
                                 {
+                                    { "courseMemberAssignmentsList", "Темы" },
                                     { "CourseMemberRequests", "Заявки на вступление" },
                                     { "CourseMemberList", "Список участников" },
                                     { "LeaveCourse", "Покинуть курс" }
@@ -363,6 +367,7 @@ namespace CourseManagementBot
                             {
                                 courseManageButtons = new()
                                 {
+                                    { "courseMemberAssignmentsList", "Темы" },
                                     { "CourseMemberList", "Список участников" },
                                     { "LeaveCourse", "Покинуть курс" }
                                 };
@@ -533,6 +538,148 @@ namespace CourseManagementBot
                                     cancellationToken: cts.Token);
                                 break;
                             }
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("courseOwnAssignmentsList"))
+                        {
+                            await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                replyMarkup: null,
+                                cancellationToken: cts.Token);
+                            var currentCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseOwnAssignmentsList", "")));
+                            if (currentCourseAssignments.Count() != 0)
+                            {
+                                var telegraphClient = new TelegraphClient();
+                                foreach (var currentCourseAssignment in currentCourseAssignments)
+                                {
+                                    Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("http://telegra.ph/", ""), returnContent: true);
+                                    if (currentCourseAssignment.Name != page.Title)
+                                        currentCourseAssignment.Name = page.Title;
+                                }
+                                db.SaveChanges();
+                                logBotAnswer = "Список тем вашего курса:";
+                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(currentCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), currentCourseAssignments.First().PinnedCourse.ToString()+"courseOwnAssignment"));
+                                await bot.SendTextMessageAsync(
+                                    chatId: UpdMsg.Message!.Chat.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboardMarkup,
+                                    parseMode: ParseMode.Html,
+                                    cancellationToken: cts.Token);
+                            }
+                            else
+                            {
+                                logBotAnswer = "У данного курса нет ни одной темы.";
+                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(null, UpdMsg.CallbackQuery.Data!.Replace("courseOwnAssignmentsList", "") + "courseOwnAssignment"));
+                                await bot.SendTextMessageAsync(
+                                    chatId: UpdMsg.CallbackQuery!.From.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboardMarkup,
+                                    cancellationToken: cts.Token);
+                            }
+                            break;
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("courseMemberAssignmentsList"))
+                        {
+                            await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                replyMarkup: null,
+                                cancellationToken: cts.Token);
+                            var currentCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseMemberAssignmentsList", "")));
+                            if (currentCourseAssignments.Count() != 0)
+                            {
+                                var telegraphClient = new TelegraphClient();
+                                foreach (var currentCourseAssignment in currentCourseAssignments)
+                                {
+                                    Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("http://telegra.ph/", ""), returnContent: true);
+                                    if (currentCourseAssignment.Name != page.Title)
+                                        currentCourseAssignment.Name = page.Title;
+                                }
+                                db.SaveChanges();
+                                logBotAnswer = "Список тем выбранного курса:";
+                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(currentCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), "courseMemberAssignment"));
+                                await bot.SendTextMessageAsync(
+                                    chatId: UpdMsg.Message!.Chat.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboardMarkup,
+                                    parseMode: ParseMode.Html,
+                                    cancellationToken: cts.Token);
+                            }
+                            else
+                            {
+                                logBotAnswer = "У данного курса нет ни одной темы.";
+                                await bot.SendTextMessageAsync(
+                                    chatId: UpdMsg.Message!.Chat.Id,
+                                    text: logBotAnswer,
+                                    cancellationToken: cts.Token);
+                            }
+                            break;
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("createCourseAssignment"))
+                        {
+                            await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                replyMarkup: null,
+                                cancellationToken: cts.Token);
+                            var client = new TelegraphClient();
+                            ITokenClient tokenClient;
+                            if (db.ChattedUsers.First(obj=>obj.Id == UpdMsg.CallbackQuery.From.Id.ToString()).ChatId == "1")
+                            {
+                                Account tgPhAccount = await client.CreateAccountAsync(UpdMsg.CallbackQuery.From.Username ?? UpdMsg.CallbackQuery.From.FirstName, null, "http://t.me/VladEkbDevBot");
+                                tokenClient = client.GetTokenClient(tgPhAccount.AccessToken);
+                                db.ChattedUsers.First(obj => obj.Id == UpdMsg.CallbackQuery.From.Id.ToString()).ChatId = tgPhAccount.AccessToken;
+                                db.SaveChanges();
+                            }
+                            else
+                                tokenClient = client.GetTokenClient(db.ChattedUsers.First(obj => obj.Id == UpdMsg.CallbackQuery.From.Id.ToString()).ChatId);
+                            var nodes = new List<NodeElement>();
+                            nodes.Add(
+                              new NodeElement("p",
+                                  null /* no attribute */,
+                                  "Содержимое статьи"
+                              )
+                            );
+                            NodeElement[] nodesArray = nodes.ToArray();
+
+                            // Create a new Page
+                            Page newPage = await tokenClient.CreatePageAsync(
+                              "Пустая статья",
+                              nodesArray /* NodeElement[] */,
+                              returnContent: true
+                            );
+                            CourseAssignment newCourseAssignment = new CourseAssignment
+                            {
+                                Name = newPage.Title,
+                                PinnedCourse = Convert.ToInt32(UpdMsg.CallbackQuery.Data.Replace("createCourseAssignment", "")),
+                                Description = newPage.Url
+                            };
+                            db.CourseAssignments.Add(newCourseAssignment);
+                            db.SaveChanges();
+                            var currentCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("createCourseAssignment", "")));
+                            var telegraphClient = new TelegraphClient();
+                            foreach (var currentCourseAssignment in currentCourseAssignments)
+                            {
+                                Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("http://telegra.ph/", ""), returnContent: true);
+                                if (currentCourseAssignment.Name != page.Title)
+                                    currentCourseAssignment.Name = page.Title;
+                            }
+                            db.SaveChanges();
+                            var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(currentCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), currentCourseAssignments.First().PinnedCourse.ToString() + "courseOwnAssignment"));
+                            await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery.From.Id,
+                                UpdMsg.CallbackQuery.Message.MessageId,
+                                keyboardMarkup,
+                                cts.Token);
+                            break;
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("getAssignmentsAccess"))
+                        {
+                            await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                replyMarkup: null,
+                                cancellationToken: cts.Token);
+                            break;
                         }
                     }
 
