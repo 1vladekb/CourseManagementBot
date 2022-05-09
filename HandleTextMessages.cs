@@ -19,7 +19,6 @@ namespace CourseManagementBot
         private string logBotAnswer = ""; // Строка для заполнения информации, которую будет передавать бот.
         private readonly CourseManagementDataContext db = new();
         private readonly Keyboards keyboards = new(); // Клавиатуры для дальнейшего отправления их пользователю для навигации
-        //private static string currentCoursePosBack="", currentCoursePosOfAllEle="", currentCoursePosNext="";
         public async Task AnswerMessage(ChattedUser? CurrentChattedUser, Update UpdMsg, ITelegramBotClient bot, CancellationTokenSource cts, List<ProccessCallBackUsers> proccessCallBackUsers)
         {
             // Проверка пользователя на новизну.
@@ -563,7 +562,7 @@ namespace CourseManagementBot
         }
         public static InlineKeyboardButton[][] GetUrlInlineKeyboard(Dictionary<string, string>? keyboardsValues, string callbackName)
         {
-            int countKeyboards = (callbackName.Contains("courseOwnAssignment")) ? (keyboardsValues!=null ? keyboardsValues.Count + 1 : 1) : (keyboardsValues!=null ? keyboardsValues.Count : 0);
+            int countKeyboards = (callbackName.Contains("courseOwnAssignment")) ? (keyboardsValues!=null ? keyboardsValues.Count + 2 : 2) : (keyboardsValues!=null ? keyboardsValues.Count + 1 : 1);
             var keyboardInline = new InlineKeyboardButton[countKeyboards][];
             int j = 0; // Переменная для обозначения итерации цикла.
             if (keyboardsValues != null)
@@ -595,7 +594,15 @@ namespace CourseManagementBot
                     CallbackData = "getAssignmentsAccess" + callbackName.Replace("courseOwnAssignment", "")
                 };
                 keyboardInline[j] = keyboardButtons;
+                j++;
             }
+            var refreshButton = new InlineKeyboardButton[1];
+            refreshButton[0] = new InlineKeyboardButton("Обновить")
+            {
+                Text = "Обновить",
+                CallbackData = "refreshCourseAssignments=>" + callbackName
+            };
+            keyboardInline[j] = refreshButton;
             return keyboardInline;
         }
     }

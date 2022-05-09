@@ -38,13 +38,14 @@ namespace CourseManagementBot.Models
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-                optionsBuilder.UseSqlServer("Server=HOME-PC;Database=CourseManagementData;integrated security=True;");
-                //optionsBuilder.UseSqlServer("Server=192.168.0.4;Database=CourseManagementData;User id=vladekb1;Password=FgVbNxQwZ5428;");
+                optionsBuilder.UseSqlServer("Server=HOME-PC;Database=CourseManagementData;Trusted_Connection=True;");
             }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.UseCollation("Cyrillic_General_CI_AS");
+
             modelBuilder.Entity<ActiveToken>(entity =>
             {
                 entity.HasKey(e => e.Token);
@@ -66,9 +67,7 @@ namespace CourseManagementBot.Models
                     .HasMaxLength(30)
                     .HasColumnName("ID");
 
-                entity.Property(e => e.ChatId)
-                    .HasMaxLength(30)
-                    .HasColumnName("ChatID");
+                entity.Property(e => e.ChatId).HasColumnName("ChatID");
 
                 entity.Property(e => e.Email).HasMaxLength(80);
 
@@ -172,7 +171,6 @@ namespace CourseManagementBot.Models
                 entity.HasOne(d => d.PinnedCourseNavigation)
                     .WithMany(p => p.CourseAssignments)
                     .HasForeignKey(d => d.PinnedCourse)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_CourseAssignments_Courses");
             });
 
@@ -248,6 +246,7 @@ namespace CourseManagementBot.Models
                 entity.HasOne(d => d.CourseNavigation)
                     .WithMany(p => p.CourseChanges)
                     .HasForeignKey(d => d.Course)
+                    .OnDelete(DeleteBehavior.Cascade)
                     .HasConstraintName("FK_CourseChanges_Courses");
             });
 
@@ -266,7 +265,6 @@ namespace CourseManagementBot.Models
                 entity.HasOne(d => d.CourseNavigation)
                     .WithMany(p => p.CourseJoinHistories)
                     .HasForeignKey(d => d.Course)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_CourseJoinHistory_Courses");
 
                 entity.HasOne(d => d.CurrentUserNavigation)

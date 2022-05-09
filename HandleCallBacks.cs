@@ -546,21 +546,22 @@ namespace CourseManagementBot
                                 messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                 replyMarkup: null,
                                 cancellationToken: cts.Token);
-                            var currentCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseOwnAssignmentsList", "")));
+                            var currentCourseAssignments = db.CourseAssignments.Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseOwnAssignmentsList", "")));
                             if (currentCourseAssignments.Count() != 0)
                             {
                                 var telegraphClient = new TelegraphClient();
                                 foreach (var currentCourseAssignment in currentCourseAssignments)
                                 {
-                                    Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("http://telegra.ph/", ""), returnContent: true);
+                                    Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("https://telegra.ph/", ""), returnContent: true);
                                     if (currentCourseAssignment.Name != page.Title)
                                         currentCourseAssignment.Name = page.Title;
                                 }
                                 db.SaveChanges();
-                                logBotAnswer = "Список тем вашего курса:";
-                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(currentCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), currentCourseAssignments.First().PinnedCourse.ToString()+"courseOwnAssignment"));
+                                var refreshedCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseOwnAssignmentsList", "")));
+                                logBotAnswer = "Для возможности редактирования своих тем нажмите кнопку \"Получить доступ к редактированию с этого устр-ва\"\n\nСписок тем вашего курса:";
+                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(refreshedCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), refreshedCourseAssignments.First().PinnedCourse.ToString()+"courseOwnAssignment"));
                                 await bot.SendTextMessageAsync(
-                                    chatId: UpdMsg.Message!.Chat.Id,
+                                    chatId: UpdMsg.CallbackQuery!.From.Id,
                                     text: logBotAnswer,
                                     replyMarkup: keyboardMarkup,
                                     parseMode: ParseMode.Html,
@@ -585,21 +586,22 @@ namespace CourseManagementBot
                                 messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                 replyMarkup: null,
                                 cancellationToken: cts.Token);
-                            var currentCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseMemberAssignmentsList", "")));
+                            var currentCourseAssignments = db.CourseAssignments.Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseMemberAssignmentsList", "")));
                             if (currentCourseAssignments.Count() != 0)
                             {
                                 var telegraphClient = new TelegraphClient();
                                 foreach (var currentCourseAssignment in currentCourseAssignments)
                                 {
-                                    Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("http://telegra.ph/", ""), returnContent: true);
+                                    Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("https://telegra.ph/", ""), returnContent: true);
                                     if (currentCourseAssignment.Name != page.Title)
                                         currentCourseAssignment.Name = page.Title;
                                 }
                                 db.SaveChanges();
+                                var refreshedCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseMemberAssignmentsList", "")));
                                 logBotAnswer = "Список тем выбранного курса:";
-                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(currentCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), "courseMemberAssignment"));
+                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(refreshedCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), refreshedCourseAssignments.First().PinnedCourse.ToString()+"courseMemberAssignment"));
                                 await bot.SendTextMessageAsync(
-                                    chatId: UpdMsg.Message!.Chat.Id,
+                                    chatId: UpdMsg.CallbackQuery!.From.Id,
                                     text: logBotAnswer,
                                     replyMarkup: keyboardMarkup,
                                     parseMode: ParseMode.Html,
@@ -608,9 +610,11 @@ namespace CourseManagementBot
                             else
                             {
                                 logBotAnswer = "У данного курса нет ни одной темы.";
+                                var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(null, UpdMsg.CallbackQuery.Data!.Replace("courseMemberAssignmentsList", "") + "courseMemberAssignment"));
                                 await bot.SendTextMessageAsync(
-                                    chatId: UpdMsg.Message!.Chat.Id,
+                                    chatId: UpdMsg.CallbackQuery!.From.Id,
                                     text: logBotAnswer,
+                                    replyMarkup: keyboardMarkup,
                                     cancellationToken: cts.Token);
                             }
                             break;
@@ -621,6 +625,11 @@ namespace CourseManagementBot
                             await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
                                 messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                 replyMarkup: null,
+                                cancellationToken: cts.Token);
+                            logBotAnswer = "Пожалуйста, подождите. Тема создается";
+                            await bot.EditMessageTextAsync(UpdMsg.CallbackQuery.From.Id,
+                                UpdMsg.CallbackQuery.Message.MessageId,
+                                text: logBotAnswer,
                                 cancellationToken: cts.Token);
                             var client = new TelegraphClient();
                             ITokenClient tokenClient;
@@ -641,13 +650,21 @@ namespace CourseManagementBot
                               )
                             );
                             NodeElement[] nodesArray = nodes.ToArray();
-
+                            string pageTitleSymbols = "aA1bBcC2dDeE3fFgG4hHiI5jJkK6lLmM7nNoO8pPqQ9rRsS0tTuU1vVwW2xXyY3zZ";
+                            var rand = new Random();
+                            string pageTitle = "";
+                            for (int i = 1; i <= 15; i++)
+                                pageTitle += pageTitleSymbols[rand.Next(pageTitleSymbols.Length - 1)].ToString();
                             // Create a new Page
                             Page newPage = await tokenClient.CreatePageAsync(
-                              "Пустая статья",
+                              pageTitle,
                               nodesArray /* NodeElement[] */,
                               returnContent: true
                             );
+                            string currentPageUrl = newPage.Url;
+                            newPage = await tokenClient.EditPageAsync(currentPageUrl.Replace("https://telegra.ph/", ""),
+                                "Пустая статья",
+                                nodesArray);
                             CourseAssignment newCourseAssignment = new CourseAssignment
                             {
                                 Name = newPage.Title,
@@ -660,12 +677,17 @@ namespace CourseManagementBot
                             var telegraphClient = new TelegraphClient();
                             foreach (var currentCourseAssignment in currentCourseAssignments)
                             {
-                                Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("http://telegra.ph/", ""), returnContent: true);
+                                Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("https://telegra.ph/", ""), returnContent: true);
                                 if (currentCourseAssignment.Name != page.Title)
                                     currentCourseAssignment.Name = page.Title;
                             }
                             db.SaveChanges();
                             var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(currentCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), currentCourseAssignments.First().PinnedCourse.ToString() + "courseOwnAssignment"));
+                            logBotAnswer = "Тема была успешно добавлена к вашему курсу.\n\nДля возможности редактирования своих тем нажмите кнопку \"Получить доступ к редактированию с этого устр-ва\"\n\nСписок тем вашего курса.";
+                            await bot.EditMessageTextAsync(UpdMsg.CallbackQuery.From.Id,
+                                UpdMsg.CallbackQuery.Message.MessageId,
+                                text: logBotAnswer,
+                                cancellationToken: cts.Token);
                             await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery.From.Id,
                                 UpdMsg.CallbackQuery.Message.MessageId,
                                 keyboardMarkup,
@@ -675,10 +697,127 @@ namespace CourseManagementBot
 
                         if (UpdMsg.CallbackQuery.Data!.Contains("getAssignmentsAccess"))
                         {
+                            logBotAnswer = "Пожалуйста, подождите. Происходит сброс со всех устройств.";
+                            var currentMsgToEdit = await bot.SendTextMessageAsync(UpdMsg.CallbackQuery.From.Id,
+                                text: logBotAnswer,
+                                cancellationToken: cts.Token);
+                            if (db.ChattedUsers.First(obj => obj.Id == UpdMsg.CallbackQuery.From.Id.ToString()).ChatId != "1")
+                            {
+                                var client = new TelegraphClient();
+                                var currentUser = db.ChattedUsers.First(obj => obj.Id == UpdMsg.CallbackQuery.From.Id.ToString());
+                                ITokenClient tokenClient = client.GetTokenClient(currentUser.ChatId);
+                                var newAccountToken = await tokenClient.RevokeAccessTokenAsync();
+                                currentUser.ChatId = newAccountToken.AccessToken;
+                                db.SaveChanges();
+                                InlineKeyboardMarkup getAccessUrlButton = new(new []
+                                {
+                                    InlineKeyboardButton.WithUrl(
+                                        text: "Получить доступ с этого устройства",
+                                        url: newAccountToken.AuthorizationUrl)
+                                });
+                                logBotAnswer = "Ваша ссылка была успешно создана!\nУчтите, что все прошлые сессии будут сброшены.\n\nДанная ссылка действует всего один раз и только первые 5 минут.";
+                                await bot.EditMessageTextAsync(UpdMsg.CallbackQuery.From.Id,
+                                    currentMsgToEdit.MessageId,
+                                    text: logBotAnswer,
+                                    replyMarkup: getAccessUrlButton,
+                                    cancellationToken: cts.Token);
+                            }
+                            else
+                            {
+                                logBotAnswer = "Ошибка: вы не создали ни одной темы для ваших курсов.";
+                                await bot.EditMessageTextAsync(UpdMsg.CallbackQuery.From.Id,
+                                    currentMsgToEdit.MessageId,
+                                    text: logBotAnswer,
+                                    cancellationToken: cts.Token);
+                            }
+                            break;
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("refreshCourseAssignments"))
+                        {
                             await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
                                 messageId: UpdMsg.CallbackQuery.Message!.MessageId,
                                 replyMarkup: null,
                                 cancellationToken: cts.Token);
+                            logBotAnswer = "Пожалуйста, подождите. Список тем данного курса обновляется.";
+                            await bot.EditMessageTextAsync(UpdMsg.CallbackQuery.From.Id,
+                                UpdMsg.CallbackQuery.Message.MessageId,
+                                text: logBotAnswer,
+                                cancellationToken: cts.Token);
+                            if (UpdMsg.CallbackQuery.Data!.Split("=>")[1].Contains("courseOwnAssignment"))
+                            {
+                                int currentCourseID = Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Split("=>")[1].Replace("courseOwnAssignment", ""));
+                                var currentCourseAssignments = db.CourseAssignments.Where(obj => obj.PinnedCourse == currentCourseID);
+                                if (currentCourseAssignments.Count() != 0)
+                                {
+                                    var telegraphClient = new TelegraphClient();
+                                    foreach (var currentCourseAssignment in currentCourseAssignments)
+                                    {
+                                        Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("https://telegra.ph/", ""), returnContent: true);
+                                        if (currentCourseAssignment.Name != page.Title)
+                                            currentCourseAssignment.Name = page.Title;
+                                    }
+                                    db.SaveChanges();
+                                    var refreshedCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == currentCourseID);
+                                    logBotAnswer = "Список тем данного курса был успешно обновлен.\n\nДля возможности редактирования своих тем нажмите кнопку \"Получить доступ к редактированию с этого устр-ва\"\n\nСписок тем вашего курса:";
+                                    var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(refreshedCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), refreshedCourseAssignments.First().PinnedCourse.ToString() + "courseOwnAssignment"));
+                                    await bot.EditMessageTextAsync(
+                                        chatId: UpdMsg.CallbackQuery!.From.Id,
+                                        messageId: UpdMsg.CallbackQuery.Message.MessageId,
+                                        text: logBotAnswer,
+                                        replyMarkup: keyboardMarkup,
+                                        parseMode: ParseMode.Html,
+                                        cancellationToken: cts.Token);
+                                }
+                                else
+                                {
+                                    logBotAnswer = "Список тем данного курса был успешно обновлен.\n\nУ данного курса нет ни одной темы.";
+                                    var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(null, currentCourseID.ToString() + "courseOwnAssignment"));
+                                    await bot.EditMessageTextAsync(
+                                        chatId: UpdMsg.CallbackQuery!.From.Id,
+                                        messageId: UpdMsg.CallbackQuery.Message.MessageId,
+                                        text: logBotAnswer,
+                                        replyMarkup: keyboardMarkup,
+                                        cancellationToken: cts.Token);
+                                }
+                            }
+                            else
+                            {
+                                int currentCourseID = Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Split("=>")[1].Replace("courseMemberAssignment", ""));
+                                var currentCourseAssignments = db.CourseAssignments.Where(obj => obj.PinnedCourse == currentCourseID);
+                                if (currentCourseAssignments.Count() != 0)
+                                {
+                                    var telegraphClient = new TelegraphClient();
+                                    foreach (var currentCourseAssignment in currentCourseAssignments)
+                                    {
+                                        Page page = await telegraphClient.GetPageAsync(currentCourseAssignment.Description!.Replace("https://telegra.ph/", ""), returnContent: true);
+                                        if (currentCourseAssignment.Name != page.Title)
+                                            currentCourseAssignment.Name = page.Title;
+                                    }
+                                    db.SaveChanges();
+                                    var refreshedCourseAssignments = db.CourseAssignments.AsNoTracking().Where(obj => obj.PinnedCourse == currentCourseID);
+                                    logBotAnswer = "Список тем данного курса был успешно обновлен.\n\nСписок тем выбранного курса:";
+                                    var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(refreshedCourseAssignments.ToDictionary(obj => obj.Description!, obj => obj.Name), refreshedCourseAssignments.First().PinnedCourse.ToString() + "courseMemberAssignment"));
+                                    await bot.EditMessageTextAsync(
+                                        chatId: UpdMsg.CallbackQuery!.From.Id,
+                                        messageId: UpdMsg.CallbackQuery.Message.MessageId,
+                                        text: logBotAnswer,
+                                        replyMarkup: keyboardMarkup,
+                                        parseMode: ParseMode.Html,
+                                        cancellationToken: cts.Token);
+                                }
+                                else
+                                {
+                                    logBotAnswer = "У данного курса нет ни одной темы.";
+                                    var keyboardMarkup = new InlineKeyboardMarkup(HandleTextMessages.GetUrlInlineKeyboard(null, currentCourseID.ToString() + "courseMemberAssignment"));
+                                    await bot.EditMessageTextAsync(
+                                        chatId: UpdMsg.CallbackQuery!.From.Id,
+                                        messageId: UpdMsg.CallbackQuery.Message.MessageId,
+                                        text: logBotAnswer,
+                                        replyMarkup: keyboardMarkup,
+                                        cancellationToken: cts.Token);
+                                }
+                            }
                             break;
                         }
                     }
