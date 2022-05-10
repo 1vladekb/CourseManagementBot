@@ -562,7 +562,7 @@ namespace CourseManagementBot
         }
         public static InlineKeyboardButton[][] GetUrlInlineKeyboard(Dictionary<string, string>? keyboardsValues, string callbackName)
         {
-            int countKeyboards = (callbackName.Contains("courseOwnAssignment")) ? (keyboardsValues!=null ? keyboardsValues.Count + 2 : 2) : (keyboardsValues!=null ? keyboardsValues.Count + 1 : 1);
+            int countKeyboards = (callbackName.Contains("courseOwnAssignment")) ? (keyboardsValues!=null ? keyboardsValues.Count + 3 : 2) : (keyboardsValues!=null ? keyboardsValues.Count + 1 : 1);
             var keyboardInline = new InlineKeyboardButton[countKeyboards][];
             int j = 0; // Переменная для обозначения итерации цикла.
             if (keyboardsValues != null)
@@ -595,6 +595,17 @@ namespace CourseManagementBot
                 };
                 keyboardInline[j] = keyboardButtons;
                 j++;
+                if (keyboardsValues != null)
+                {
+                    keyboardButtons = new InlineKeyboardButton[1];
+                    keyboardButtons[0] = new InlineKeyboardButton("Удалить тему")
+                    {
+                        Text = "Удалить тему",
+                        CallbackData = "courseAssignmentsDeleteList" + callbackName.Replace("courseOwnAssignment", "")
+                    };
+                    keyboardInline[j] = keyboardButtons;
+                    j++;
+                }
             }
             var refreshButton = new InlineKeyboardButton[1];
             refreshButton[0] = new InlineKeyboardButton("Обновить")

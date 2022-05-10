@@ -820,6 +820,25 @@ namespace CourseManagementBot
                             }
                             break;
                         }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("courseAssignmentsDeleteList"))
+                        {
+                            await bot.DeleteMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                cancellationToken: cts.Token);
+                            ProccessCallBackUsers proccessCallBackUser = new ProccessCallBackUsers
+                            {
+                                UserID = UpdMsg.CallbackQuery!.From.Id.ToString(),
+                                CurrentCallBackProccess = "courseAssignmentsDeleteList"
+                            };
+                            proccessCallBackUsers.Add(proccessCallBackUser);
+                            logBotAnswer = "Вы перешли в процесс удаления темы курса.";
+                            await bot.SendTextMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                text: logBotAnswer,
+                                replyMarkup: new ReplyKeyboardRemove(),
+                                cancellationToken: cts.Token);
+                            break;
+                        }
                     }
 
                     else
