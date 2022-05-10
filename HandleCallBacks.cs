@@ -83,41 +83,6 @@ namespace CourseManagementBot
                     // Пропускает действие, если пользователь не находится в процессе CallBack запроса.
                     else
                         break;
-                // Идентификатор inline кнопки редактирования профиля.
-                case "EditProfile":
-                    // Проверяем, не пытается ли пользователь войти в CallBack запрос, когда уже находится в нем.
-                    if (proccessCallBackUsers.FirstOrDefault(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()) == null)
-                    {
-                        // Добавляем пользователя в лист пользователей, находящихся в CallBack запросе.
-                        proccessCallBackUsers.Add(new ProccessCallBackUsers
-                        {
-                            UserID = UpdMsg.CallbackQuery!.From.Id.ToString(),
-                            CurrentCallBackProccess = "EditProfile"
-                        });
-                        // Удаление inline кнопок в том сообщении, в котором пользватель нажал на одну из этих кнопок.
-                        await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
-                            messageId: UpdMsg.CallbackQuery.Message!.MessageId,
-                            replyMarkup: null,
-                            cancellationToken: cts.Token);
-                        // Уведомление пользователю о том, что он перешел в процесс CallBack запроса, а также временное удаление reply кнопок.
-                        logBotAnswer = "Вы перешли в процесс редактирования профиля.";
-                        await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
-                            text: logBotAnswer,
-                            replyMarkup: new ReplyKeyboardRemove(),
-                            cancellationToken: cts.Token);
-                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.CallbackQuery!.From.Username}: {logBotAnswer}");
-                        // Вывод пользователю кнопок для дальнейшего редактирования профиля.
-                        logBotAnswer = "Выберите один из следующих пунктов, которые вы хотите отредактировать:";
-                        await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
-                            text: logBotAnswer,
-                            replyMarkup: keyboards.EditProfileInlineKeyboard,
-                            cancellationToken: cts.Token);
-                        Console.WriteLine($" ~ [{DateTime.Now:yyyy-MM-dd HH-mm}] Ответ пользователю @{UpdMsg.CallbackQuery!.From.Username}: {logBotAnswer}");
-                        break;
-                    }
-                    // Пропускает действие, если пользователь не находится в процессе CallBack запроса.
-                    else
-                        break;
 
                 case "JoinCourseByToken":
                     if (proccessCallBackUsers.FirstOrDefault(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()) == null)
@@ -288,13 +253,15 @@ namespace CourseManagementBot
                             else
                                 logBotAnswer += "Курс не является приватным\n";
                             if (currentCourse.MembersCount != null)
-                                logBotAnswer += $"Ограниченное количество участников: {db.CourseUsers.Where(obj => obj.Course == currentCourse.Id)} из {currentCourse.MembersCount}\n";
+                                logBotAnswer += $"Ограниченное количество участников: {db.CourseUsers.AsNoTracking().Where(obj => obj.Course == currentCourse.Id)} из {currentCourse.MembersCount}\n";
                             else
                                 logBotAnswer += "Неограниченное количество участников\n";
                             if (currentCourse.Token != null)
                                 logBotAnswer += $"Токен для подключения к курсу: {currentCourse.Token}";
                             else
                                 logBotAnswer += "Токен для подключения к курсу отсутствует.";
+                            int admittedUsers = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("ownCourses", "")) && obj.Admitted == true).Count();
+                            int nonAdmittedUsers = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("ownCourses", "")) && obj.Admitted == false).Count();
                             // Создание библиотеки с данными, которые нужно будет отобразить на кнопках (если нужно больше кнопок, добавлять больше полей).
                             // Нужно это для дальнейшей отправки в метод динамического формирования inline. Почему так, а не через базовый конструктор клавитауры?
                             // Потому что для понимания следующего CallBack запроса на редактирование конкретного курса, вызваным пользователем, для inline кнопок отправляется идентификатор выбранного курса и идентификатор inline кнопок
@@ -304,8 +271,8 @@ namespace CourseManagementBot
                                 { "courseOwnAssignmentsList", "Темы" },
                                 { "EditCourse", "Редактировать курс" },
                                 { "DeleteCourse", "Удалить курс" },
-                                { "CourseMemberList", "Список участников" },
-                                { "CourseMemberRequests", "Заявки на вступление" }
+                                { "CourseMemberList", $"Список участников ({admittedUsers})" },
+                                { "CourseMemberRequests", $"Заявки на вступление ({nonAdmittedUsers})" }
                             };
                             // Отправка библиотеки в метод динамического формирования inline кнопок.
                             var currentCourseInlineKeyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseManageButtons, UpdMsg.CallbackQuery.Data!.Replace("ownCourses", "")));
@@ -340,7 +307,7 @@ namespace CourseManagementBot
                             else
                                 logBotAnswer += "Курс не является приватным\n";
                             if (currentCourse.MembersCount != null)
-                                logBotAnswer += $"Ограниченное количество участников: {db.CourseUsers.Where(obj => obj.Course == currentCourse.Id)} из {currentCourse.MembersCount}\n";
+                                logBotAnswer += $"Ограниченное количество участников: {db.CourseUsers.AsNoTracking().Where(obj => obj.Course == currentCourse.Id)} из {currentCourse.MembersCount}\n";
                             else
                                 logBotAnswer += "Неограниченное количество участников\n";
                             Dictionary<string, string> courseManageButtons;
@@ -351,6 +318,8 @@ namespace CourseManagementBot
                                     logBotAnswer += $"Токен для подключения к курсу: {currentCourse.Token}";
                                 else
                                     logBotAnswer += "Токен для подключения к курсу отсутствует.";
+                                int admittedUsers = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("coursesMember", "")) && obj.Admitted == false).Count();
+                                int nonAdmittedUsers = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("coursesMember", "")) && obj.Admitted == true).Count();
                                 // Создание библиотеки с данными, которые нужно будет отобразить на кнопках (если нужно больше кнопок, добавлять больше полей).
                                 // Нужно это для дальнейшей отправки в метод динамического формирования inline. Почему так, а не через базовый конструктор клавитауры?
                                 // Потому что для понимания следующего CallBack запроса на редактирование конкретного курса, вызваным пользователем, для inline кнопок отправляется идентификатор выбранного курса и идентификатор inline кнопок
@@ -358,17 +327,18 @@ namespace CourseManagementBot
                                 courseManageButtons = new()
                                 {
                                     { "courseMemberAssignmentsList", "Темы" },
-                                    { "CourseMemberRequests", "Заявки на вступление" },
-                                    { "CourseMemberList", "Список участников" },
+                                    { "CourseMemberRequests", $"Заявки на вступление ({admittedUsers})" },
+                                    { "CourseMemberList", $"Список участников ({nonAdmittedUsers})" },
                                     { "LeaveCourse", "Покинуть курс" }
                                 };
                             }
                             else
                             {
+                                int admittedUsers = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("coursesMember", "")) && obj.Admitted == false).Count();
                                 courseManageButtons = new()
                                 {
                                     { "courseMemberAssignmentsList", "Темы" },
-                                    { "CourseMemberList", "Список участников" },
+                                    { "CourseMemberList", $"Список участников ({admittedUsers})" },
                                     { "LeaveCourse", "Покинуть курс" }
                                 };
                             }
@@ -837,60 +807,151 @@ namespace CourseManagementBot
                                 text: logBotAnswer,
                                 replyMarkup: new ReplyKeyboardRemove(),
                                 cancellationToken: cts.Token);
+                            var currentCourseAssignmentsToDelete = db.CourseAssignments.AsNoTracking().Where(obj=>obj.PinnedCourse == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseAssignmentsDeleteList", ""))).ToDictionary(obj=>obj.Id.ToString(), obj=>obj.Name);
+                            currentCourseAssignmentsToDelete.Add("GoBack", "Назад");
+                            var keyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(currentCourseAssignmentsToDelete, "courseAssignmentToDelete"));
+                            logBotAnswer = "Выберите один из ваших тем из списка для его удаления:";
+                            await bot.SendTextMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                text: logBotAnswer,
+                                replyMarkup: keyboard,
+                                parseMode: ParseMode.Html,
+                                cancellationToken: cts.Token);
+                            break;
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("CourseMemberList"))
+                        {
+                            var currentCourseMembersList = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data.Replace("CourseMemberList", "")) && obj.Admitted == true);
+                            if (currentCourseMembersList.Count() != 0)
+                            {
+                                logBotAnswer = "Список участников:\n\n";
+                                int j = 1;
+                                var allChattedUsers = db.ChattedUsers.ToList();
+                                foreach (var currentCourseUser in currentCourseMembersList)
+                                {
+                                    string currentUsername = allChattedUsers.First(obj=>obj.Id == currentCourseUser.PinnedUser).Name;
+                                    logBotAnswer += $"{j}. Пользователь: {currentUsername} | Роль: {currentCourseUser.CourseUserRole} | Дата вступления: {currentCourseUser.LeavingDate.Date}\n\n";
+                                    j++;
+                                }
+                                await bot.SendTextMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                    text: logBotAnswer,
+                                    cancellationToken: cts.Token);
+                                break;
+                            }
+                            break;
+                        }
+
+                        if (UpdMsg.CallbackQuery.Data!.Contains("CourseMemberRequests"))
+                        {
+                            var courseUserRequests = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == Convert.ToInt32(UpdMsg.CallbackQuery.Data.Replace("CourseMemberRequests", "")) && obj.Admitted == false);
+                            if (courseUserRequests.Count() != 0)
+                            {
+                                await bot.DeleteMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                    messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                    cancellationToken: cts.Token);
+                                ProccessCallBackUsers proccessCallBackUser = new ProccessCallBackUsers
+                                {
+                                    UserID = UpdMsg.CallbackQuery!.From.Id.ToString(),
+                                    CurrentCallBackProccess = "CourseMemberRequests"
+                                };
+                                proccessCallBackUsers.Add(proccessCallBackUser);
+                                string courseName = db.Courses.First(obj => obj.Id == Convert.ToInt32(UpdMsg.CallbackQuery.Data.Replace("CourseMemberRequests", ""))).Name;
+                                logBotAnswer = $"Вы перешли в процесс управления заявками на вступление в курс \"{courseName}\".";
+                                await bot.SendTextMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: new ReplyKeyboardRemove(),
+                                    cancellationToken: cts.Token);
+                                Dictionary<string, string> userRequestsDicButtons = new();
+                                var allChattedUsers = db.ChattedUsers.ToList();
+                                foreach (var userRequest in courseUserRequests)
+                                    userRequestsDicButtons.Add(userRequest.PinnedUser, allChattedUsers.First(obj=>obj.Id == userRequest.PinnedUser).Name);
+                                userRequestsDicButtons.Add("GoBack", "Назад");
+                                var keyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(userRequestsDicButtons, UpdMsg.CallbackQuery.Data.Replace("CourseMemberRequests", "") + "=>acceptUserCourseJoinRequest"));
+                                logBotAnswer = "Нажмите на одного из списка заявок пользователя, чтобы принять его в курс:";
+                                await bot.SendTextMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboard,
+                                    cancellationToken: cts.Token);
+                                break;
+                            }
                             break;
                         }
                     }
 
                     else
                     {
-                        if (UpdMsg.CallbackQuery.Data!.Contains("acceptDeleteCourse"))
+                        if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "DeleteCourse")
                         {
-                            await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
-                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
-                                replyMarkup: null,
-                                cancellationToken: cts.Token);
-                            logBotAnswer = "Вы успешно удалили курс!";
-                            var choosedDeleteCourse = db.Courses.First(obj => obj.Id == Convert.ToInt32(UpdMsg.CallbackQuery!.Data!.Replace("acceptDeleteCourse", "")));
-                            db.Courses.Remove(choosedDeleteCourse);
-                            db.SaveChanges();
-                            await bot.EditMessageTextAsync(UpdMsg.CallbackQuery!.From.Id,
-                                messageId: UpdMsg.CallbackQuery.Message!.MessageId,
-                                text: logBotAnswer,
-                                cancellationToken: cts.Token);
-                            var currentUserProccess = proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
-                            proccessCallBackUsers.Remove(currentUserProccess);
-                            break;
-                        }
-                        if (UpdMsg.CallbackQuery.Data!.Contains("acceptJoinCourse"))
-                        {
-                            string courseToken = UpdMsg.CallbackQuery.Data!.Replace("acceptJoinCourse", "").Split('-')[1];
-                            ActiveToken courseTokenData = db.ActiveTokens.First(obj => obj.Token == courseToken);
-                            courseTokenData.UsedAttempts++;
-                            CourseUser newCourseMember = new CourseUser
+                            if (UpdMsg.CallbackQuery.Data!.Contains("acceptDeleteCourse"))
                             {
-                                Course = Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("acceptJoinCourse", "").Split('-')[0]),
-                                PinnedUser = UpdMsg.CallbackQuery!.From.Id.ToString(),
-                                CourseUserRole = "Участник",
-                                Admitted = true,
-                                LeavingDate = DateTime.Now.Date
-                            };
-                            db.CourseUsers.Add(newCourseMember);
-                            var currentUserProccess = proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
-                            proccessCallBackUsers.Remove(currentUserProccess);
-                            logBotAnswer = $"{char.ConvertFromUtf32(0x2705)} Вы успешно подписались на курс <b>\"{db.Courses.First(obj => obj.Token == courseToken).Name}\"</b>!";
-                            await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
-                                text: logBotAnswer,
-                                replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
-                                parseMode: ParseMode.Html,
-                                cancellationToken: cts.Token);
-                            if (courseTokenData.MaxUsesNumber == courseTokenData.UsedAttempts)
-                            {
-                                Console.WriteLine($" ~ Пользователь @{UpdMsg.CallbackQuery!.From.Username ?? UpdMsg.CallbackQuery!.From.FirstName} совершил последнюю активацию токена. Удаляем токен из БД.");
-                                db.ActiveTokens.Remove(courseTokenData); // Удаление токена в случае, если лимит был достигнут.
-                                Console.WriteLine(" ~ Токен был успешно удалён.");
+                                await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                                    messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                    replyMarkup: null,
+                                    cancellationToken: cts.Token);
+                                logBotAnswer = "Вы успешно удалили курс!";
+                                var choosedDeleteCourse = db.Courses.First(obj => obj.Id == Convert.ToInt32(UpdMsg.CallbackQuery!.Data!.Replace("acceptDeleteCourse", "")));
+                                db.Courses.Remove(choosedDeleteCourse);
+                                db.SaveChanges();
+                                await bot.EditMessageTextAsync(UpdMsg.CallbackQuery!.From.Id,
+                                    messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                    text: logBotAnswer,
+                                    cancellationToken: cts.Token);
+                                var currentUserProccess = proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
+                                proccessCallBackUsers.Remove(currentUserProccess);
+                                break;
                             }
-                            db.SaveChanges();
-                            break;
+                        }
+                        if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "JoinCourseByToken")
+                        {
+                            if (UpdMsg.CallbackQuery.Data!.Contains("acceptJoinCourse"))
+                            {
+                                string courseToken = UpdMsg.CallbackQuery.Data!.Replace("acceptJoinCourse", "").Split('-')[1];
+                                ActiveToken courseTokenData = db.ActiveTokens.First(obj => obj.Token == courseToken);
+                                courseTokenData.UsedAttempts++;
+                                CourseUser newCourseMember;
+                                int currentCourseID = Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("acceptJoinCourse", "").Split('-')[0]);
+                                var currentCourse = db.Courses.First(obj => obj.Id == currentCourseID);
+                                if (currentCourse.IsPrivate == false)
+                                {
+                                    newCourseMember = new CourseUser
+                                    {
+                                        Course = Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("acceptJoinCourse", "").Split('-')[0]),
+                                        PinnedUser = UpdMsg.CallbackQuery!.From.Id.ToString(),
+                                        CourseUserRole = "Участник",
+                                        Admitted = true,
+                                        LeavingDate = DateTime.Now.Date
+                                    };
+                                    logBotAnswer = $"{char.ConvertFromUtf32(0x2705)} Вы успешно подписались на курс <b>\"{db.Courses.First(obj => obj.Token == courseToken).Name}\"</b>!";
+                                }
+                                else
+                                {
+                                    newCourseMember = new CourseUser
+                                    {
+                                        Course = Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("acceptJoinCourse", "").Split('-')[0]),
+                                        PinnedUser = UpdMsg.CallbackQuery!.From.Id.ToString(),
+                                        CourseUserRole = "Участник",
+                                        Admitted = false,
+                                        LeavingDate = DateTime.Now.Date
+                                    };
+                                    logBotAnswer = $"{char.ConvertFromUtf32(0x2705)} Вы успешно подали заявку на курс <b>\"{db.Courses.First(obj => obj.Token == courseToken).Name}\"</b>!";
+                                }
+                                db.CourseUsers.Add(newCourseMember);
+                                var currentUserProccess = proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
+                                proccessCallBackUsers.Remove(currentUserProccess);
+                                await bot.SendTextMessageAsync(chatId: UpdMsg.CallbackQuery!.From.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
+                                    parseMode: ParseMode.Html,
+                                    cancellationToken: cts.Token);
+                                if (courseTokenData.MaxUsesNumber == courseTokenData.UsedAttempts)
+                                {
+                                    Console.WriteLine($" ~ Пользователь @{UpdMsg.CallbackQuery!.From.Username ?? UpdMsg.CallbackQuery!.From.FirstName} совершил последнюю активацию токена. Удаляем токен из БД.");
+                                    db.ActiveTokens.Remove(courseTokenData); // Удаление токена в случае, если лимит был достигнут.
+                                    Console.WriteLine(" ~ Токен был успешно удалён.");
+                                }
+                                db.SaveChanges();
+                                break;
+                            }
                         }
                         if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "LeaveCourse")
                         {
@@ -1238,6 +1299,18 @@ namespace CourseManagementBot
                                 var currentCourseCreating = tempCreatingCourseObjects.First(obj => obj.Key == UpdMsg.CallbackQuery!.From.Id.ToString());
                                 if (currentCourseCreating.Value.Name != null)
                                 {
+                                    if (currentCourseCreating.Value.Token != null)
+                                    {
+                                        ActiveToken newActiveToken = new()
+                                        {
+                                            Token = currentCourseCreating.Value.Token,
+                                            TokenType = "Присоединение к курсу",
+                                            MaxUsesNumber = 0,
+                                            UsedAttempts = 0
+                                        };
+                                        db.ActiveTokens.Add(newActiveToken);
+                                        db.SaveChanges();
+                                    }
                                     db.Courses.Add(currentCourseCreating.Value);
                                     db.SaveChanges();
                                     tempCreatingCourseObjects.Remove(UpdMsg.CallbackQuery!.From.Id.ToString());
@@ -1276,6 +1349,118 @@ namespace CourseManagementBot
                                     text: logBotAnswer,
                                     replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
                                     cancellationToken: cts.Token);
+                                break;
+                            }
+                            break;
+                        }
+                        if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "courseAssignmentsDeleteList")
+                        {
+                            if (UpdMsg.CallbackQuery.Data!.Contains("courseAssignmentToDelete"))
+                            {
+                                await bot.DeleteMessageAsync(UpdMsg.CallbackQuery.From.Id,
+                                    UpdMsg.CallbackQuery.Message!.MessageId,
+                                    cts.Token);
+                                string currentCourseAssignmentName = db.CourseAssignments.AsNoTracking().First(obj => obj.Id == Convert.ToInt32(UpdMsg.CallbackQuery.Data!.Replace("courseAssignmentToDelete", ""))).Name;
+                                Dictionary<string, string> assignmentDeletingChoice = new()
+                                {
+                                    { "acceptAssignmentDelete", "Удалить" },
+                                    { "GoBack", "Отменить" }
+                                };
+                                var keyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(assignmentDeletingChoice, UpdMsg.CallbackQuery.Data!.Replace("courseAssignmentToDelete", "")));
+                                logBotAnswer = $"Вы выбрали тему \"{currentCourseAssignmentName}\".\n\nПодтвердите удаление:";
+                                await bot.SendTextMessageAsync(UpdMsg.CallbackQuery.From.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboard,
+                                    parseMode: ParseMode.Html,
+                                    cancellationToken: cts.Token);
+                                break;
+                            }
+                            if (UpdMsg.CallbackQuery.Data!.Contains("acceptAssignmentDelete"))
+                            {
+                                await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery.From.Id,
+                                    UpdMsg.CallbackQuery.Message!.MessageId,
+                                    replyMarkup: null,
+                                    cancellationToken: cts.Token);
+                                logBotAnswer = "Пожалуйста, подождите. Происходит удаление темы...";
+                                await bot.EditMessageTextAsync(UpdMsg.CallbackQuery.From.Id,
+                                    UpdMsg.CallbackQuery.Message!.MessageId,
+                                    text: logBotAnswer,
+                                    cancellationToken: cts.Token);
+                                var currentCourseAssignment = db.CourseAssignments.First(obj=>obj.Id == Convert.ToInt32(UpdMsg.CallbackQuery.Data.Replace("acceptAssignmentDelete", "")));
+                                string currentCourseAssignmentName = currentCourseAssignment.Name;
+                                var telegraphClient = new TelegraphClient();
+                                ITokenClient tokenClient = telegraphClient.GetTokenClient(db.ChattedUsers.First(obj=>obj.Id == UpdMsg.CallbackQuery.From.Id.ToString()).ChatId);
+                                var nodes = new List<NodeElement>();
+                                nodes.Add(
+                                  new NodeElement("p",
+                                      null /* no attribute */,
+                                      "Содержимое удалено."
+                                  )
+                                );
+                                NodeElement[] nodesArray = nodes.ToArray();
+                                await tokenClient.EditPageAsync(
+                                    currentCourseAssignment.Description!.Replace("https://telegra.ph/", ""),
+                                    "Статья удалена",
+                                    nodesArray /* NodeElement[] */
+                                );
+                                db.CourseAssignments.Remove(currentCourseAssignment);
+                                db.SaveChanges();
+                                var currentUserProccess = proccessCallBackUsers.First(obj=>obj.UserID == UpdMsg.CallbackQuery.From.Id.ToString());
+                                proccessCallBackUsers.Remove(currentUserProccess);
+                                await bot.DeleteMessageAsync(UpdMsg.CallbackQuery.From.Id,
+                                    UpdMsg.CallbackQuery.Message!.MessageId,
+                                    cts.Token);
+                                logBotAnswer = $"Тема \"{currentCourseAssignmentName}\" была успешно удалена!";
+                                await bot.SendTextMessageAsync(UpdMsg.CallbackQuery.From.Id,
+                                    text: logBotAnswer,
+                                    replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
+                                    parseMode: ParseMode.Html,
+                                    cancellationToken: cts.Token);
+                                break;
+                            }
+                            break;
+                        }
+                        if (proccessCallBackUsers.First(obj => obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString()).CurrentCallBackProccess == "CourseMemberRequests")
+                        {
+                            if (UpdMsg.CallbackQuery.Data!.Contains("acceptUserCourseJoinRequest"))
+                            {
+                                await bot.EditMessageReplyMarkupAsync(UpdMsg.CallbackQuery!.From.Id,
+                                   messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                   replyMarkup: null,
+                                   cancellationToken: cts.Token);
+                                int currentRequestCourseId = Convert.ToInt32(UpdMsg.CallbackQuery.Data.Replace("acceptUserCourseJoinRequest", "").Split("=>")[0]);
+                                string currentRequestUserId = UpdMsg.CallbackQuery.Data.Replace("acceptUserCourseJoinRequest", "").Split("=>")[1];
+                                var currentRequest = db.CourseUsers.First(obj=>obj.Course == currentRequestCourseId && obj.PinnedUser == currentRequestUserId);
+                                currentRequest.Admitted = true;
+                                db.SaveChanges();
+                                var courseUserRequests = db.CourseUsers.AsNoTracking().Where(obj => obj.Course == currentRequestCourseId && obj.Admitted == false);
+                                if (courseUserRequests.Count() != 0)
+                                {
+                                    Dictionary<string, string> userRequestsDicButtons = new();
+                                    foreach (var userRequest in courseUserRequests)
+                                        userRequestsDicButtons.Add(userRequest.PinnedUser, db.ChattedUsers.First(obj => obj.Id == userRequest.PinnedUser).Name);
+                                    userRequestsDicButtons.Add("GoBack", "Назад");
+                                    var keyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(userRequestsDicButtons, UpdMsg.CallbackQuery.Data.Replace("CourseMemberRequests", "") + "=>acceptUserCourseJoinRequest"));
+                                    logBotAnswer = $"Пользователь {db.ChattedUsers.First(obj => obj.Id == currentRequestUserId).Name} успешно стал учатсником курса \"{db.Courses.First(obj => obj.Id == currentRequestCourseId).Name}\"!\n\nНажмите на одного из списка заявок пользователя, чтобы принять его в курс:";
+                                    await bot.EditMessageTextAsync(UpdMsg.CallbackQuery!.From.Id,
+                                        UpdMsg.CallbackQuery.Message!.MessageId,
+                                        text: logBotAnswer,
+                                        replyMarkup: keyboard,
+                                        cancellationToken: cts.Token);
+                                }
+                                else
+                                {
+                                    await bot.DeleteMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                        messageId: UpdMsg.CallbackQuery.Message!.MessageId,
+                                        cancellationToken: cts.Token);
+                                    var currentUserProccess = proccessCallBackUsers.First(obj=>obj.UserID == UpdMsg.CallbackQuery!.From.Id.ToString());
+                                    proccessCallBackUsers.Remove(currentUserProccess);
+                                    logBotAnswer = $"Пользователь {db.ChattedUsers.First(obj=>obj.Id == currentRequestUserId).Name} успешно стал учатсником курса \"{db.Courses.First(obj=>obj.Id == currentRequestCourseId).Name}\"!\n\nЗаявок на вступление в курс больше нет. Вы вернулись в главное меню.";
+                                    await bot.SendTextMessageAsync(UpdMsg.CallbackQuery!.From.Id,
+                                        text: logBotAnswer,
+                                        replyMarkup: keyboards.UserMainReplyKeyboradMarkup,
+                                        cancellationToken: cts.Token);
+                                }
                                 break;
                             }
                             break;

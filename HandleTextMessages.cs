@@ -81,7 +81,7 @@ namespace CourseManagementBot
                                 case "Подписки":
                                     var currentCoursesMember = (from courses in db.Courses
                                                                join courseUser in db.CourseUsers on courses.Id equals courseUser.Course
-                                                               where courseUser.PinnedUser == UpdMsg.Message.From!.Id.ToString()
+                                                               where courseUser.PinnedUser == UpdMsg.Message.From!.Id.ToString() && courseUser.Admitted == true
                                                                select courses).ToDictionary(obj=>obj.Id.ToString(), obj=>obj.Name);
                                     // Проверка на подписку хотя бы на один курс.
                                     if (currentCoursesMember.Count() != 0)
@@ -210,7 +210,7 @@ namespace CourseManagementBot
                                 case "filterCoursesMember":
                                     var currentCoursesMemberFiltered = (from courses in db.Courses
                                                                 join courseUser in db.CourseUsers on courses.Id equals courseUser.Course
-                                                                where courseUser.PinnedUser == UpdMsg.Message.From!.Id.ToString()
+                                                                where courseUser.PinnedUser == UpdMsg.Message.From!.Id.ToString() && courseUser.Admitted == true
                                                                 select courses).Where(obj=>obj.Name.Contains(UpdMsg.Message.Text!)).ToDictionary(obj => obj.Id.ToString(), obj => obj.Name);
                                     if (currentCoursesMemberFiltered.Count() != 0)
                                     {
@@ -254,19 +254,30 @@ namespace CourseManagementBot
                                             // Проверка типа токена на соответствующий CallBack запросу (т.к. известно, что пользователь в CallBack запросе активации токена для ПОЛУЧЕНИЯ РОЛИ, то проверять нужно тип токена, который предназначен именно на получение роли).
                                             if (currentCourseToken.TokenType == "Присоединение к курсу")
                                             {
-                                                logBotAnswer = $"Найден следующий курс:\n\n<b>{currentCourse.Name}</b>\n\nВы уверены, что хотите подписаться на курс?";
-                                                Dictionary<string, string> courseJoinChoiceButtons = new()
+                                                if (db.CourseUsers.FirstOrDefault(obj=>obj.Course == currentCourse.Id && obj.PinnedUser == UpdMsg.Message.From!.Id.ToString()) == null)
                                                 {
-                                                    { "acceptJoinCourse-"+currentCourseToken.Token, "Да" },
-                                                    { "GoBack", "Нет" }
-                                                };
-                                                var courseJoinChoiceInlineKeyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseJoinChoiceButtons, currentCourse.Id.ToString()));
-                                                await bot.SendTextMessageAsync(
-                                                    chatId: UpdMsg.Message!.Chat.Id,
-                                                    text: logBotAnswer,
-                                                    replyMarkup: courseJoinChoiceInlineKeyboard,
-                                                    parseMode: ParseMode.Html,
-                                                    cancellationToken: cts.Token);
+                                                    logBotAnswer = $"Найден следующий курс:\n\n<b>{currentCourse.Name}</b>\n\nВы уверены, что хотите подписаться на курс?";
+                                                    Dictionary<string, string> courseJoinChoiceButtons = new()
+                                                    {
+                                                        { "acceptJoinCourse-" + currentCourseToken.Token, "Да" },
+                                                        { "GoBack", "Нет" }
+                                                    };
+                                                    var courseJoinChoiceInlineKeyboard = new InlineKeyboardMarkup(HandleTextMessages.GetInlineKeyboard(courseJoinChoiceButtons, currentCourse.Id.ToString()));
+                                                    await bot.SendTextMessageAsync(
+                                                        chatId: UpdMsg.Message!.Chat.Id,
+                                                        text: logBotAnswer,
+                                                        replyMarkup: courseJoinChoiceInlineKeyboard,
+                                                        parseMode: ParseMode.Html,
+                                                        cancellationToken: cts.Token);
+                                                }
+                                                else
+                                                {
+                                                    logBotAnswer = "Ошибка. Вы уже являетесь участником данного курса или уже подали заявку на вступление.";
+                                                    await bot.SendTextMessageAsync(
+                                                        chatId: UpdMsg.Message!.Chat.Id,
+                                                        text: logBotAnswer,
+                                                        cancellationToken: cts.Token);
+                                                }
                                             }
                                             else
                                             {
@@ -519,11 +530,22 @@ namespace CourseManagementBot
             foreach (var keyboardsValue in keyboardsValues) // Цикл, шагающий по библиотеке данных о курсах для дальнейшего размещения их на кнопки (1 аргумент).
             {
                 var keyboardButtons = new InlineKeyboardButton[1];
-                keyboardButtons[0] = new InlineKeyboardButton(keyboardsValue.Value)
+                if (keyboardsValue.Key == "GoBack")
                 {
-                    Text = keyboardsValue.Value,
-                    CallbackData = callbackName + keyboardsValue.Key,
-                };
+                    keyboardButtons[0] = new InlineKeyboardButton(keyboardsValue.Value)
+                    {
+                        Text = keyboardsValue.Value,
+                        CallbackData = keyboardsValue.Key,
+                    };
+                }
+                else
+                {
+                    keyboardButtons[0] = new InlineKeyboardButton(keyboardsValue.Value)
+                    {
+                        Text = keyboardsValue.Value,
+                        CallbackData = callbackName + keyboardsValue.Key,
+                    };
+                }
                 keyboardInline[j] = keyboardButtons;
                 j++;
             }

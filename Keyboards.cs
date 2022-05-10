@@ -28,10 +28,6 @@ namespace CourseManagementBot
             new []
             {
                 InlineKeyboardButton.WithCallbackData(text: "Активировать токен", callbackData: "ActivateProfileToken")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData(text: "Редактировать профиль", callbackData: "EditProfile")
             }
         });
 
@@ -41,33 +37,6 @@ namespace CourseManagementBot
             new []
             {
                 InlineKeyboardButton.WithCallbackData(text: $"{char.ConvertFromUtf32(0x2B05)} Назад", callbackData: "GoBack")
-            }
-        });
-
-        public static string[] currentUserData = new string[4];
-
-        // Панель с inline кнопками в разделе редактирования профиля.
-        public readonly InlineKeyboardMarkup EditProfileInlineKeyboard = new(new[]
-        {
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData(text: $"Изменить имя ({currentUserData[0]})", callbackData: "EditFirstName")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData(text: $"Изменить фамилию ({currentUserData[1]})", callbackData: "EditLastName")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData(text: $"Изменить отчество ({currentUserData[2]})", callbackData: "EditMiddleName")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData(text: $"Изменить почту ({currentUserData[3]})", callbackData: "EditEmail")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData(text: $"Прикрепить фото", callbackData: "PinProfileImage")
             }
         });
 

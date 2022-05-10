@@ -44,8 +44,6 @@ namespace CourseManagementBot.Models
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.UseCollation("Cyrillic_General_CI_AS");
-
             modelBuilder.Entity<ActiveToken>(entity =>
             {
                 entity.HasKey(e => e.Token);
@@ -122,6 +120,7 @@ namespace CourseManagementBot.Models
                 entity.HasOne(d => d.TokenNavigation)
                     .WithMany(p => p.Courses)
                     .HasForeignKey(d => d.Token)
+                    .OnDelete(DeleteBehavior.SetNull)
                     .HasConstraintName("FK_Courses_ActiveTokens");
 
                 entity.HasMany(d => d.Courses)
@@ -294,7 +293,6 @@ namespace CourseManagementBot.Models
                 entity.HasOne(d => d.CourseNavigation)
                     .WithMany(p => p.CourseUsers)
                     .HasForeignKey(d => d.Course)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_CourseUsers_Courses");
 
                 entity.HasOne(d => d.CourseUserRoleNavigation)
